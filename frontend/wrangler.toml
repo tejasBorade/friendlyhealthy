@@ -1,20 +1,8 @@
-# Cloudflare Pages - Frontend Deployment
+name = "friendlyhealthy"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "dist"
 
-# Build configuration
-[build]
-  command = "npm run build"
-  publish = "dist"
-
-# Environment variables
-[build.environment]
-  NODE_VERSION = "18"
-
-# Redirects and headers
-[[redirects]]
-  from = "/api/*"
-  to = "https://your-backend-api.railway.app/api/:splat"
-  status = 200
-
+# Redirects for SPA routing
 [[redirects]]
   from = "/*"
   to = "/index.html"
@@ -26,4 +14,3 @@
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
