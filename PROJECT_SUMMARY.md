@@ -31,6 +31,12 @@ A complete, production-ready Healthcare Management Platform built with:
 - ✅ Token refresh mechanism
 - ✅ Doctor search and filtering
 - ✅ Appointment booking system
+- ✅ Consultation management
+- ✅ Prescription management with version control
+- ✅ Medical history CRUD operations
+- ✅ Report upload/download with file validation
+- ✅ Billing and payment processing
+- ✅ Notification system
 - ✅ Status management workflow
 - ✅ Error handling and validation
 - ✅ Async database operations

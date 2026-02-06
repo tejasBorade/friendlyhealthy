@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 import logging
 from app.core.config import settings
 from app.core.database import engine
-from app.api.routes import auth, doctors, appointments
+from app.api.routes import auth, doctors, appointments, prescriptions, medical_history, reports, billing, notifications
 
 # Configure logging
 logging.basicConfig(
@@ -96,6 +96,11 @@ async def health_check():
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(doctors.router, prefix="/api/v1")
 app.include_router(appointments.router, prefix="/api/v1")
+app.include_router(prescriptions.router, prefix="/api/v1")
+app.include_router(medical_history.router, prefix="/api/v1")
+app.include_router(reports.router, prefix="/api/v1")
+app.include_router(billing.router, prefix="/api/v1")
+app.include_router(notifications.router, prefix="/api/v1")
 
 
 # Root endpoint

@@ -682,6 +682,403 @@ print(doctors.json())
 
 ---
 
-**For interactive testing, visit:**
-- Swagger UI: http://localhost:8000/api/docs
-- ReDoc: http://localhost:8000/api/redoc
+### Prescriptions
+
+#### Create Consultation
+```http
+POST /prescriptions/consultations
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "appointment_id": "uuid",
+  "chief_complaint": "Fever and cough",
+  "diagnosis": "Upper respiratory infection",
+  "consultation_notes": "Patient has fever and dry cough",
+  "follow_up_required": true,
+  "follow_up_after_days": 7
+}
+
+Response: 201 Created
+```
+
+#### Create Prescription
+```http
+POST /prescriptions
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "consultation_id": "uuid",
+  "notes": "Take medications as prescribed",
+  "special_instructions": "Avoid cold drinks",
+  "medicines": [
+    {
+      "medicine_name": "Paracetamol 500mg",
+      "dosage": "1 tablet",
+      "usage": "oral",
+      "frequency": "3 times a day",
+      "duration_days": 5,
+      "special_instructions": "After meals"
+    }
+  ]
+}
+
+Response: 201 Created
+```
+
+#### Get Prescriptions
+```http
+GET /prescriptions?patient_id=uuid&skip=0&limit=20
+Authorization: Bearer <access_token>
+
+Response: 200 OK
+[
+  {
+    "id": "uuid",
+    "prescription_number": "RX20260207001",
+    "patient_id": "uuid",
+    "doctor_id": "uuid",
+    "prescription_date": "2026-02-07",
+    "medicines": [...],
+    "version": 1
+  }
+]
+```
+
+#### Get Prescription Details
+```http
+GET /prescriptions/{prescription_id}
+Authorization: Bearer <access_token>
+
+Response: 200 OK
+```
+
+#### Update Prescription
+```http
+PUT /prescriptions/{prescription_id}
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "notes": "Updated notes",
+  "medicines": [...]
+}
+
+Response: 200 OK
+```
+
+---
+
+### Medical History
+
+#### Create Medical History
+```http
+POST /medical-history
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "patient_id": "uuid",
+  "appointment_id": "uuid",
+  "recorded_date": "2026-02-07",
+  "past_illnesses": "Typhoid (2020)",
+  "allergies": "Penicillin",
+  "chronic_diseases": "None",
+  "surgeries": "Appendectomy (2018)",
+  "family_medical_history": "Diabetes in family",
+  "current_medications": "None",
+  "notes": "Patient is generally healthy"
+}
+
+Response: 201 Created
+```
+
+#### Get Patient Medical History
+```http
+GET /medical-history/patient/{patient_id}?skip=0&limit=20
+Authorization: Bearer <access_token>
+
+Response: 200 OK
+[...]
+```
+
+#### Update Medical History
+```http
+PUT /medical-history/{history_id}
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "allergies": "Penicillin, Sulfa drugs",
+  "notes": "Updated information"
+}
+
+Response: 200 OK
+```
+
+#### Delete Medical History
+```http
+DELETE /medical-history/{history_id}
+Authorization: Bearer <access_token>
+
+Response: 204 No Content
+```
+
+---
+
+### Medical Reports
+
+#### Upload Report
+```http
+POST /reports
+Authorization: Bearer <access_token>
+Content-Type: multipart/form-data
+
+patient_id: uuid
+report_type: blood_test
+report_name: CBC Test
+test_date: 2026-02-07
+lab_name: PathLab
+lab_address: 123 Main St
+doctor_remarks: Normal values
+file: [binary file data]
+
+Response: 201 Created
+```
+
+#### Get Reports
+```http
+GET /reports?patient_id=uuid&report_type=blood_test&skip=0&limit=20
+Authorization: Bearer <access_token>
+
+Response: 200 OK
+[
+  {
+    "id": "uuid",
+    "patient_id": "uuid",
+    "report_type": "blood_test",
+    "report_name": "CBC Test",
+    "test_date": "2026-02-07",
+    "report_file_path": "/uploads/reports/file.pdf"
+  }
+]
+```
+
+#### Download Report
+```http
+GET /reports/{report_id}/download
+Authorization: Bearer <access_token>
+
+Response: 200 OK
+Content-Type: application/octet-stream
+[binary file data]
+```
+
+#### Update Report
+```http
+PUT /reports/{report_id}
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "report_name": "Updated CBC Test",
+  "doctor_remarks": "Updated remarks"
+}
+
+Response: 200 OK
+```
+
+#### Delete Report
+```http
+DELETE /reports/{report_id}
+Authorization: Bearer <access_token>
+
+Response: 204 No Content
+```
+
+---
+
+### Billing & Payments
+
+#### Get Charge Types
+```http
+GET /billing/charge-types?is_active=true
+Authorization: Bearer <access_token>
+
+Response: 200 OK
+[
+  {
+    "id": "uuid",
+    "name": "Consultation Fee",
+    "default_amount": 500.00,
+    "is_taxable": true,
+    "is_active": true
+  }
+]
+```
+
+#### Create Bill
+```http
+POST /billing/bills
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "patient_id": "uuid",
+  "appointment_id": "uuid",
+  "items": [
+    {
+      "charge_type_id": "uuid",
+      "description": "General consultation",
+      "quantity": 1,
+      "unit_price": 500.00
+    }
+  ],
+  "discount_amount": 0,
+  "notes": "Regular consultation"
+}
+
+Response: 201 Created
+```
+
+#### Get Bills
+```http
+GET /billing/bills?patient_id=uuid&payment_status=pending&skip=0&limit=20
+Authorization: Bearer <access_token>
+
+Response: 200 OK
+[
+  {
+    "id": "uuid",
+    "bill_number": "BILL20260207001",
+    "patient_id": "uuid",
+    "bill_date": "2026-02-07",
+    "total_amount": 590.00,
+    "payment_status": "pending",
+    "items": [...]
+  }
+]
+```
+
+#### Get Bill Details
+```http
+GET /billing/bills/{bill_id}
+Authorization: Bearer <access_token>
+
+Response: 200 OK
+```
+
+#### Update Payment Status
+```http
+PATCH /billing/bills/{bill_id}/payment
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "payment_status": "paid",
+  "payment_method": "card",
+  "transaction_id": "TXN123456789"
+}
+
+Response: 200 OK
+```
+
+#### Get Bill Summary
+```http
+GET /billing/bills/{bill_id}/summary
+Authorization: Bearer <access_token>
+
+Response: 200 OK
+{
+  "bill_number": "BILL20260207001",
+  "patient_name": "John Doe",
+  "items": [...],
+  "subtotal": 500.00,
+  "tax_amount": 90.00,
+  "total_amount": 590.00,
+  "currency": "INR"
+}
+```
+
+---
+
+### Notifications
+
+#### Create Notification
+```http
+POST /notifications
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "user_id": "uuid",
+  "notification_type": "appointment",
+  "title": "Appointment Confirmed",
+  "message": "Your appointment has been confirmed",
+  "priority": "high",
+  "related_entity_type": "appointment",
+  "related_entity_id": "uuid"
+}
+
+Response: 201 Created
+```
+
+#### Get Notifications
+```http
+GET /notifications?is_read=false&skip=0&limit=20
+Authorization: Bearer <access_token>
+
+Response: 200 OK
+[
+  {
+    "id": "uuid",
+    "notification_type": "appointment",
+    "title": "Appointment Confirmed",
+    "message": "...",
+    "is_read": false,
+    "created_at": "2026-02-07T10:00:00Z"
+  }
+]
+```
+
+#### Get Unread Count
+```http
+GET /notifications/unread-count
+Authorization: Bearer <access_token>
+
+Response: 200 OK
+{
+  "unread_count": 5
+}
+```
+
+#### Mark Notification as Read
+```http
+PATCH /notifications/{notification_id}/read
+Authorization: Bearer <access_token>
+
+Response: 200 OK
+```
+
+#### Mark All Notifications as Read
+```http
+PATCH /notifications/mark-all-read
+Authorization: Bearer <access_token>
+
+Response: 200 OK
+{
+  "message": "Marked 5 notifications as read"
+}
+```
+
+#### Delete Notification
+```http
+DELETE /notifications/{notification_id}
+Authorization: Bearer <access_token>
+
+Response: 204 No Content
+```
+
+---
+
