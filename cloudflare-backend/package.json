@@ -1,0 +1,23 @@
+{
+  "name": "friendlyhealthy-worker",
+  "version": "1.0.0",
+  "description": "Healthcare Platform - Cloudflare Workers Backend",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "start": "wrangler dev"
+  },
+  "dependencies": {
+    "hono": "^3.12.8",
+    "@hono/zod-validator": "^0.2.1",
+    "zod": "^3.22.4",
+    "bcryptjs": "^2.4.3",
+    "jose": "^5.2.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240117.0",
+    "wrangler": "^3.25.0",
+    "typescript": "^5.3.3"
+  }
+}

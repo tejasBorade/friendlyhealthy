@@ -1,7 +1,7 @@
 # Healthcare Platform - Quick Deploy Script for Windows
 
-Write-Host "🚀 Healthcare Platform Deployment" -ForegroundColor Green
-Write-Host "==================================" -ForegroundColor Green
+Write-Host "Healthcare Platform Deployment" -ForegroundColor Green
+Write-Host "==============================" -ForegroundColor Green
 Write-Host ""
 
 # Check if Railway CLI is installed
@@ -17,7 +17,7 @@ if (!(Get-Command wrangler -ErrorAction SilentlyContinue)) {
 }
 
 Write-Host ""
-Write-Host "📋 Deployment Options:"
+Write-Host "Deployment Options:" -ForegroundColor Cyan
 Write-Host "1. Deploy Backend to Railway"
 Write-Host "2. Deploy Frontend to Cloudflare Pages"
 Write-Host "3. Deploy Both (Full Stack)"
@@ -28,18 +28,18 @@ $option = Read-Host "Select option (1-4)"
 
 switch ($option) {
     1 {
-        Write-Host "🚀 Deploying Backend to Railway..." -ForegroundColor Green
+        Write-Host "Deploying Backend to Railway..." -ForegroundColor Green
         Set-Location backend
         railway login
         railway init
         railway add
         railway up
-        Write-Host "✅ Backend deployed!" -ForegroundColor Green
+        Write-Host "Backend deployed successfully!" -ForegroundColor Green
         railway open
         Set-Location ..
     }
     2 {
-        Write-Host "🚀 Deploying Frontend to Cloudflare Pages..." -ForegroundColor Green
+        Write-Host "Deploying Frontend to Cloudflare Pages..." -ForegroundColor Green
         Set-Location frontend
         
         # Ask for backend URL
@@ -52,11 +52,11 @@ switch ($option) {
         
         # Deploy
         wrangler pages deploy dist --project-name=friendlyhealthy
-        Write-Host "✅ Frontend deployed!" -ForegroundColor Green
+        Write-Host "Frontend deployed successfully!" -ForegroundColor Green
         Set-Location ..
     }
     3 {
-        Write-Host "🚀 Deploying Full Stack..." -ForegroundColor Green
+        Write-Host "Deploying Full Stack..." -ForegroundColor Green
         
         # Deploy Backend first
         Write-Host "Step 1: Deploying Backend to Railway..."
@@ -77,15 +77,15 @@ switch ($option) {
         wrangler pages deploy dist --project-name=friendlyhealthy
         Set-Location ..
         
-        Write-Host "✅ Full stack deployed!" -ForegroundColor Green
-        Write-Host "Backend: $backend_url" -ForegroundColor Green
-        Write-Host "Frontend: Check Cloudflare Pages dashboard" -ForegroundColor Green
+        Write-Host "Full stack deployed successfully!" -ForegroundColor Green
+        Write-Host "Backend: $backend_url" -ForegroundColor Cyan
+        Write-Host "Frontend: Check Cloudflare Pages dashboard" -ForegroundColor Cyan
     }
     4 {
-        Write-Host "🚀 Deploying to Render..." -ForegroundColor Green
+        Write-Host "Deploying to Render..." -ForegroundColor Green
         Write-Host "Please follow these steps:"
         Write-Host "1. Go to https://render.com"
-        Write-Host "2. New → Web Service"
+        Write-Host "2. New -> Web Service"
         Write-Host "3. Connect GitHub: tejasBorade/friendlyhealthy"
         Write-Host "4. Build Command: cd backend && pip install -r requirements.txt"
         Write-Host "5. Start Command: cd backend && uvicorn app.main:app --host 0.0.0.0 --port `$PORT"
@@ -99,12 +99,12 @@ switch ($option) {
 }
 
 Write-Host ""
-Write-Host "🎉 Deployment Complete!" -ForegroundColor Green
+Write-Host "Deployment Complete!" -ForegroundColor Green
 Write-Host ""
-Write-Host "Next steps:"
+Write-Host "Next steps:" -ForegroundColor Yellow
 Write-Host "1. Set environment variables in your hosting platform"
 Write-Host "2. Run database migrations"
 Write-Host "3. Test your deployment"
 Write-Host "4. Configure custom domain (optional)"
 Write-Host ""
-Write-Host "Need help? Check CLOUDFLARE_DEPLOYMENT.md"
+Write-Host "Need help? Check CLOUDFLARE_DEPLOYMENT.md" -ForegroundColor Cyan

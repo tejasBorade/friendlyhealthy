@@ -1,0 +1,35 @@
+name = "friendlyhealthy"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# Use Cloudflare D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "friendlyhealthy-db"
+database_id = "your-database-id"
+
+# Use Cloudflare R2 for file storage
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "friendlyhealthy-files"
+
+# Use Cloudflare KV for caching
+[[kv_namespaces]]
+binding = "CACHE"
+id = "your-kv-namespace-id"
+
+[vars]
+ENVIRONMENT = "production"
+JWT_SECRET = "your-secret-key-here"
+JWT_EXPIRY = "15m"
+
+[build]
+command = "npm install && npm run build"
+
+[env.production]
+name = "friendlyhealthy"
+vars = { ENVIRONMENT = "production" }
+
+[env.staging]
+name = "friendlyhealthy-staging"
+vars = { ENVIRONMENT = "staging" }
