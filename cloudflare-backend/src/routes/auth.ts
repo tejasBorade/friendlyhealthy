@@ -72,7 +72,8 @@ auth.post('/register', zValidator('json', registerSchema), async (c) => {
     }, 201);
   } catch (error) {
     console.error('Register error:', error);
-    return c.json({ error: 'Registration failed' }, 500);
+    console.error('Error details:', error instanceof Error ? error.message : String(error));
+    return c.json({ error: 'Registration failed', details: error instanceof Error ? error.message : String(error) }, 500);
   }
 });
 
@@ -81,10 +82,14 @@ auth.post('/login', zValidator('json', loginSchema), async (c) => {
   try {
     const { email, password } = c.req.valid('json');
     
+    console.log('Login attempt for:', email);
+    
     // Get user
     const user = await c.env.DB.prepare(
       'SELECT id, email, password_hash, role FROM users WHERE email = ? AND is_active = 1'
     ).bind(email).first();
+    
+    console.log('User found:', user ? 'yes' : 'no');
     
     if (!user) {
       return c.json({ error: 'Invalid credentials' }, 401);
@@ -92,6 +97,8 @@ auth.post('/login', zValidator('json', loginSchema), async (c) => {
     
     // Verify password
     const validPassword = await bcrypt.compare(password, user.password_hash);
+    console.log('Password valid:', validPassword);
+    
     if (!validPassword) {
       return c.json({ error: 'Invalid credentials' }, 401);
     }
@@ -110,7 +117,8 @@ auth.post('/login', zValidator('json', loginSchema), async (c) => {
     });
   } catch (error) {
     console.error('Login error:', error);
-    return c.json({ error: 'Login failed' }, 500);
+    console.error('Error details:', error instanceof Error ? error.message : String(error));
+    return c.json({ error: 'Login failed', details: error instanceof Error ? error.message : String(error) }, 500);
   }
 });
 

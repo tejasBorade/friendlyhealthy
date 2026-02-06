@@ -1,7 +1,0 @@
-{
-  "name": "friendlyhealthy",
-  "compatibility_date": "2024-01-01",
-  "assets": {
-    "directory": "./frontend/dist"
-  }
-}
