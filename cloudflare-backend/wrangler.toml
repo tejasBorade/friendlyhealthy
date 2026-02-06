@@ -6,7 +6,7 @@ compatibility_date = "2024-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "friendlyhealthy-db"
-database_id = "your-database-id"
+database_id = "c3cddfbe-4c85-47cd-b4bc-4c2dbe57208e"
 
 # Use Cloudflare R2 for file storage
 [[r2_buckets]]
@@ -22,9 +22,6 @@ id = "your-kv-namespace-id"
 ENVIRONMENT = "production"
 JWT_SECRET = "your-secret-key-here"
 JWT_EXPIRY = "15m"
-
-[build]
-command = "npm install && npm run build"
 
 [env.production]
 name = "friendlyhealthy"
