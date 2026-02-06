@@ -8,8 +8,6 @@ import appointments from './routes/appointments';
 
 type Bindings = {
   DB: D1Database;
-  FILES: R2Bucket;
-  CACHE: KVNamespace;
   JWT_SECRET: string;
   ENVIRONMENT: string;
 };
