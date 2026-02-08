@@ -92,7 +92,7 @@ router.post('/', authenticate, async (req, res) => {
 
     const result = await pool.query(`
       INSERT INTO appointments (patient_id, doctor_id, appointment_date, appointment_time, reason, status)
-      VALUES ($1, $2, $3, $4, $5, 'scheduled')
+      VALUES ($1, $2, $3, $4, $5, 'booked')
       RETURNING *
     `, [patientId, doctorId, appointmentDate, appointmentTime, reason]);
 

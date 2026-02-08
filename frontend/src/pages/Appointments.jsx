@@ -27,6 +27,7 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
@@ -39,6 +40,7 @@ const statusColors = {
 };
 
 const Appointments = () => {
+  const navigate = useNavigate();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [bookingDialog, setBookingDialog] = useState(false);
@@ -243,7 +245,13 @@ const Appointments = () => {
                   <TableCell>{appointment.appointment_time}</TableCell>
                   {user?.role !== 'patient' && (
                     <TableCell>
-                      {appointment.patient_first_name} {appointment.patient_last_name}
+                      <Button
+                        variant="text"
+                        onClick={() => navigate(`/doctor/patient/${appointment.patient_id}`)}
+                        sx={{ textTransform: 'none', color: 'primary.main', fontWeight: 500 }}
+                      >
+                        {appointment.patient_first_name} {appointment.patient_last_name}
+                      </Button>
                     </TableCell>
                   )}
                   {user?.role !== 'doctor' && (

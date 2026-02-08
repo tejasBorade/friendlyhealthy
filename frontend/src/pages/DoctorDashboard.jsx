@@ -96,6 +96,7 @@ const DoctorDashboard = () => {
       
       {/* Stats Cards */}
       <Grid container spacing={3}>
+        <Grid item xs={12} md={3}>
           <Paper sx={{ p: 3, display: 'flex', alignItems: 'center' }}>
             <CalendarTodayIcon sx={{ fontSize: 40, color: 'primary.main', mr: 2 }} />
             <Box>
@@ -128,8 +129,7 @@ const DoctorDashboard = () => {
             </Box>
           </Paper>
         </Grid>
-        <Grid item xs={12} md={3
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={3}>
           <Paper sx={{ p: 3, display: 'flex', alignItems: 'center' }}>
             <PendingActionsIcon sx={{ fontSize: 40, color: 'warning.main', mr: 2 }} />
             <Box>
@@ -156,16 +156,11 @@ const DoctorDashboard = () => {
         ) : (
           <TableContainer>
             <Table>
-              <TableHead> hover sx={{ cursor: 'pointer' }}>
-                    <TableCell>{formatDate(appointment.appointment_date)}</TableCell>
-                    <TableCell>{appointment.appointment_time}</TableCell>
-                    <TableCell>
-                      <Button 
-                        variant="text" 
-                        onClick={() => navigate(`/doctor/patient/${appointment.patient_id}`)}
-                      >
-                        {appointment.patient_first_name} {appointment.patient_last_name}
-                      </Button>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Date</TableCell>
+                  <TableCell>Time</TableCell>
+                  <TableCell>Patient</TableCell>
                   <TableCell>Reason</TableCell>
                   <TableCell>Status</TableCell>
                 </TableRow>
@@ -176,7 +171,13 @@ const DoctorDashboard = () => {
                     <TableCell>{formatDate(appointment.appointment_date)}</TableCell>
                     <TableCell>{appointment.appointment_time}</TableCell>
                     <TableCell>
-                      {appointment.patient_first_name} {appointment.patient_last_name}
+                      <Button 
+                        variant="text" 
+                        onClick={() => navigate(`/doctor/patient/${appointment.patient_id}`)}
+                        sx={{ textTransform: 'none' }}
+                      >
+                        {appointment.patient_first_name} {appointment.patient_last_name}
+                      </Button>
                     </TableCell>
                     <TableCell>{appointment.reason}</TableCell>
                     <TableCell>
