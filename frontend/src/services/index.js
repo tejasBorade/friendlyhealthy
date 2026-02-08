@@ -8,19 +8,17 @@ export const authService = {
 
   login: async (credentials) => {
     const response = await api.post('/auth/login', credentials);
-    const { access_token, refresh_token, user } = response.data;
+    const { token, user } = response.data;
     
-    localStorage.setItem('accessToken', access_token);
-    localStorage.setItem('refreshToken', refresh_token);
+    localStorage.setItem('accessToken', token);
     localStorage.setItem('user', JSON.stringify(user));
     
     return response.data;
   },
 
   logout: async () => {
-    const refreshToken = localStorage.getItem('refreshToken');
     try {
-      await api.post('/auth/logout', { refresh_token: refreshToken });
+      await api.post('/auth/logout');
     } finally {
       localStorage.clear();
     }

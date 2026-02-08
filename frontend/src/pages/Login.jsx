@@ -46,6 +46,9 @@ const Login = () => {
         case 'admin':
           navigate('/admin/dashboard');
           break;
+        case 'staff':
+          navigate('/staff/dashboard');
+          break;
         default:
           navigate('/');
       }

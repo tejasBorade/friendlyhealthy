@@ -13,8 +13,10 @@ import Register from './pages/Register';
 import PatientDashboard from './pages/PatientDashboard';
 import DoctorDashboard from './pages/DoctorDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import StaffDashboard from './pages/StaffDashboard';
 import DoctorSearch from './pages/DoctorSearch';
 import Appointments from './pages/Appointments';
+import PatientJourney from './pages/PatientJourney';
 import MedicalHistory from './pages/MedicalHistory';
 import Prescriptions from './pages/Prescriptions';
 import Reports from './pages/Reports';
@@ -112,6 +114,14 @@ function App() {
               }
             />
             <Route
+              path="/doctor/patient/:patientId"
+              element={
+                <ProtectedRoute allowedRoles={['doctor']}>
+                  <PatientJourney />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/doctor/appointments"
               element={
                 <ProtectedRoute allowedRoles={['doctor']}>
@@ -134,6 +144,90 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/appointments"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <Appointments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/doctors"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <DoctorSearch />
+                </ProtectedRoute>
+              }
+            />
+            
+            {/* Staff Routes */}
+            <Route
+              path="/staff/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['staff']}>
+                  <StaffDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/staff/appointments"
+              element={
+                <ProtectedRoute allowedRoles={['staff']}>
+                  <Appointments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/staff/doctors"
+              element={
+                <ProtectedRoute allowedRoles={['staff']}>
+                  <DoctorSearch />
+                </ProtectedRoute>
+              }
+            />
+            
+            {/* Shared Routes with Multi-Role Access */}
+            <Route
+              path="/doctors"
+              element={
+                <ProtectedRoute allowedRoles={['patient', 'doctor', 'admin', 'staff']}>
+                  <DoctorSearch />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/appointments"
+              element={
+                <ProtectedRoute allowedRoles={['patient', 'doctor', 'admin', 'staff']}>
+                  <Appointments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/prescriptions"
+              element={
+                <ProtectedRoute allowedRoles={['patient', 'doctor']}>
+                  <Prescriptions />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reports"
+              element={
+                <ProtectedRoute allowedRoles={['patient', 'doctor', 'admin', 'staff']}>
+                  <Reports />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/billing"
+              element={
+                <ProtectedRoute allowedRoles={['patient', 'admin', 'staff']}>
+                  <Billing />
                 </ProtectedRoute>
               }
             />
