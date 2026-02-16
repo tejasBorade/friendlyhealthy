@@ -19,8 +19,11 @@ import {
   Visibility as ViewIcon
 } from '@mui/icons-material';
 import api from '../services/api';
+import { useSelector } from 'react-redux';
+import AdminSidebar from '../components/AdminSidebar';
 
 const Billing = () => {
+  const { user } = useSelector((state) => state.auth);
   const [bills, setBills] = useState([]);
   const [summary, setSummary] = useState({});
   const [loading, setLoading] = useState(true);
@@ -91,14 +94,27 @@ const Billing = () => {
   };
 
   if (loading) {
-    return (
+    const loadingContent = (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
         <CircularProgress sx={{ color: '#10b981' }} />
       </Box>
     );
+
+    if (user?.role === 'admin') {
+      return (
+        <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
+          <AdminSidebar activeItem="Billing" />
+          <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
+            {loadingContent}
+          </Box>
+        </Box>
+      );
+    }
+
+    return loadingContent;
   }
 
-  return (
+  const pageContent = (
     <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 50%, #a7f3d0 100%)', py: 4 }}>
       <Container maxWidth="lg">
         {/* Header */}
@@ -386,6 +402,19 @@ const Billing = () => {
       </Container>
     </Box>
   );
+
+  if (user?.role === 'admin') {
+    return (
+      <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
+        <AdminSidebar activeItem="Billing" />
+        <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
+          {pageContent}
+        </Box>
+      </Box>
+    );
+  }
+
+  return pageContent;
 };
 
 export default Billing;

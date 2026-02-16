@@ -24,6 +24,7 @@ import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import { useSelector } from 'react-redux';
 import api from '../services/api';
 import { toast } from 'react-toastify';
+import AdminSidebar from '../components/AdminSidebar';
 
 const specializations = [
   'All Specializations',
@@ -61,8 +62,10 @@ const DoctorSearch = () => {
   const [appointmentTime, setAppointmentTime] = useState(null);
   const [reason, setReason] = useState('');
   const [patientId, setPatientId] = useState(null);
+  const [manualPatientId, setManualPatientId] = useState('');
   
   const { user } = useSelector((state) => state.auth);
+  const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
     fetchDoctors();
@@ -122,6 +125,7 @@ const DoctorSearch = () => {
     setAppointmentDate(null);
     setAppointmentTime(null);
     setReason('');
+    setManualPatientId('');
   };
 
   const handleConfirmBooking = async () => {
@@ -130,8 +134,14 @@ const DoctorSearch = () => {
       return;
     }
 
-    if (!patientId) {
-      toast.error('Patient profile not found. Please contact support.');
+    const bookingPatientId = user?.role === 'patient' ? patientId : Number(manualPatientId);
+
+    if (!bookingPatientId) {
+      toast.error(
+        user?.role === 'patient'
+          ? 'Patient profile not found. Please contact support.'
+          : 'Please enter a valid patient ID.'
+      );
       return;
     }
 
@@ -140,7 +150,7 @@ const DoctorSearch = () => {
       const formattedTime = appointmentTime.toTimeString().split(' ')[0].substring(0, 5);
 
       await api.post('/appointments', {
-        patientId,
+        patientId: bookingPatientId,
         doctorId: selectedDoctor.id,
         appointmentDate: formattedDate,
         appointmentTime: formattedTime,
@@ -157,7 +167,7 @@ const DoctorSearch = () => {
   };
 
   if (loading) {
-    return (
+    const loadingContent = (
       <Box sx={{ 
         minHeight: '100vh', 
         background: '#f9fafb',
@@ -168,9 +178,22 @@ const DoctorSearch = () => {
         <Typography sx={{ color: '#6b7280' }}>Loading doctors...</Typography>
       </Box>
     );
+
+    if (isAdmin) {
+      return (
+        <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
+          <AdminSidebar activeItem="Doctors" />
+          <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
+            {loadingContent}
+          </Box>
+        </Box>
+      );
+    }
+
+    return loadingContent;
   }
 
-  return (
+  const pageContent = (
     <Box sx={{ minHeight: '100vh', background: '#f9fafb' }}>
       {/* Hero Section */}
       <Box
@@ -394,7 +417,7 @@ const DoctorSearch = () => {
                       fullWidth
                       variant="contained"
                       onClick={() => handleBookAppointment(doctor)}
-                      disabled={doctor.is_available === 0 || user?.role !== 'patient'}
+                      disabled={doctor.is_available === 0}
                       sx={{
                         py: 1.5,
                         borderRadius: 3,
@@ -477,6 +500,21 @@ const DoctorSearch = () => {
               />
             </LocalizationProvider>
 
+            {user?.role !== 'patient' && (
+              <TextField
+                fullWidth
+                type="number"
+                label="Patient ID"
+                value={manualPatientId}
+                onChange={(e) => setManualPatientId(e.target.value)}
+                placeholder="Enter patient ID"
+                sx={{
+                  mb: 3,
+                  '& .MuiOutlinedInput-root': { borderRadius: 3 },
+                }}
+              />
+            )}
+
             <TextField
               fullWidth
               multiline
@@ -518,6 +556,19 @@ const DoctorSearch = () => {
       </Dialog>
     </Box>
   );
+
+  if (isAdmin) {
+    return (
+      <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
+        <AdminSidebar activeItem="Doctors" />
+        <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
+          {pageContent}
+        </Box>
+      </Box>
+    );
+  }
+
+  return pageContent;
 };
 
 export default DoctorSearch;

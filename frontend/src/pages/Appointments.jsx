@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Container,
   Typography,
   Paper,
+  Card,
+  CardContent,
+  Grid,
   Table,
   TableBody,
   TableCell,
@@ -31,6 +34,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
+import AdminSidebar from '../components/AdminSidebar';
 
 const statusColors = {
   scheduled: 'primary',
@@ -194,15 +198,37 @@ const Appointments = () => {
     return ['staff', 'admin'].includes(user?.role);
   };
 
+  const appointmentSummary = useMemo(() => {
+    return {
+      total: appointments.length,
+      scheduled: appointments.filter((appointment) => appointment.status === 'scheduled').length,
+      completed: appointments.filter((appointment) => appointment.status === 'completed').length,
+      cancelled: appointments.filter((appointment) => appointment.status === 'cancelled').length,
+    };
+  }, [appointments]);
+
   if (loading) {
-    return (
+    const loadingContent = (
       <Container sx={{ mt: 4, textAlign: 'center' }}>
         <Typography>Loading appointments...</Typography>
       </Container>
     );
+
+    if (user?.role === 'admin') {
+      return (
+        <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
+          <AdminSidebar activeItem="Appointments" />
+          <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
+            {loadingContent}
+          </Box>
+        </Box>
+      );
+    }
+
+    return loadingContent;
   }
 
-  return (
+  const pageContent = (
     <Container sx={{ mt: 4, mb: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">
@@ -220,6 +246,49 @@ const Appointments = () => {
           </Button>
         )}
       </Box>
+
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ borderRadius: 3 }}>
+            <CardContent>
+              <Typography sx={{ color: '#6b7280', fontSize: 14 }}>Total</Typography>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: '#111827' }}>
+                {appointmentSummary.total}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ borderRadius: 3 }}>
+            <CardContent>
+              <Typography sx={{ color: '#6b7280', fontSize: 14 }}>Scheduled</Typography>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: '#2563eb' }}>
+                {appointmentSummary.scheduled}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ borderRadius: 3 }}>
+            <CardContent>
+              <Typography sx={{ color: '#6b7280', fontSize: 14 }}>Completed</Typography>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: '#059669' }}>
+                {appointmentSummary.completed}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ borderRadius: 3 }}>
+            <CardContent>
+              <Typography sx={{ color: '#6b7280', fontSize: 14 }}>Cancelled</Typography>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: '#dc2626' }}>
+                {appointmentSummary.cancelled}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
       {appointments.length === 0 ? (
         <Alert severity="info">No appointments found</Alert>
@@ -383,6 +452,19 @@ const Appointments = () => {
       </Dialog>
     </Container>
   );
+
+  if (user?.role === 'admin') {
+    return (
+      <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
+        <AdminSidebar activeItem="Appointments" />
+        <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
+          {pageContent}
+        </Box>
+      </Box>
+    );
+  }
+
+  return pageContent;
 };
 
 export default Appointments;
