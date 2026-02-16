@@ -23,6 +23,8 @@ import Reports from './pages/Reports';
 import Billing from './pages/Billing';
 import Settings from './pages/Settings';
 import Profile from './pages/Profile';
+import AdminUsers from './pages/AdminUsers';
+import AdminSettings from './pages/AdminSettings';
 
 const theme = createTheme({
   palette: {
@@ -223,6 +225,22 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <DoctorSearch />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminUsers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/settings"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminSettings />
                 </ProtectedRoute>
               }
             />
