@@ -35,12 +35,13 @@ import api from '../services/api';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
 import AdminSidebar from '../components/AdminSidebar';
+import DoctorSidebar from '../components/DoctorSidebar';
 
 const statusColors = {
-  scheduled: 'primary',
+  pending: 'primary',
+  confirmed: 'info',
   completed: 'success',
   cancelled: 'error',
-  'no-show': 'warning',
 };
 
 const Appointments = () => {
@@ -201,9 +202,9 @@ const Appointments = () => {
   const appointmentSummary = useMemo(() => {
     return {
       total: appointments.length,
-      scheduled: appointments.filter((appointment) => appointment.status === 'scheduled').length,
+      pending: appointments.filter((appointment) => appointment.status === 'pending').length,
+      confirmed: appointments.filter((appointment) => appointment.status === 'confirmed').length,
       completed: appointments.filter((appointment) => appointment.status === 'completed').length,
-      cancelled: appointments.filter((appointment) => appointment.status === 'cancelled').length,
     };
   }, [appointments]);
 
@@ -218,6 +219,17 @@ const Appointments = () => {
       return (
         <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
           <AdminSidebar activeItem="Appointments" />
+          <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
+            {loadingContent}
+          </Box>
+        </Box>
+      );
+    }
+
+    if (user?.role === 'doctor') {
+      return (
+        <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
+          <DoctorSidebar activeItem="Appointments" />
           <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
             {loadingContent}
           </Box>
@@ -261,9 +273,19 @@ const Appointments = () => {
         <Grid item xs={12} sm={6} md={3}>
           <Card sx={{ borderRadius: 3 }}>
             <CardContent>
-              <Typography sx={{ color: '#6b7280', fontSize: 14 }}>Scheduled</Typography>
+              <Typography sx={{ color: '#6b7280', fontSize: 14 }}>Pending</Typography>
               <Typography variant="h4" sx={{ fontWeight: 700, color: '#2563eb' }}>
-                {appointmentSummary.scheduled}
+                {appointmentSummary.pending}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ borderRadius: 3 }}>
+            <CardContent>
+              <Typography sx={{ color: '#6b7280', fontSize: 14 }}>Confirmed</Typography>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: '#0284c7' }}>
+                {appointmentSummary.confirmed}
               </Typography>
             </CardContent>
           </Card>
@@ -274,16 +296,6 @@ const Appointments = () => {
               <Typography sx={{ color: '#6b7280', fontSize: 14 }}>Completed</Typography>
               <Typography variant="h4" sx={{ fontWeight: 700, color: '#059669' }}>
                 {appointmentSummary.completed}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ borderRadius: 3 }}>
-            <CardContent>
-              <Typography sx={{ color: '#6b7280', fontSize: 14 }}>Cancelled</Typography>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: '#dc2626' }}>
-                {appointmentSummary.cancelled}
               </Typography>
             </CardContent>
           </Card>
@@ -319,7 +331,7 @@ const Appointments = () => {
                         onClick={() => navigate(`/doctor/patient/${appointment.patient_id}`)}
                         sx={{ textTransform: 'none', color: 'primary.main', fontWeight: 500 }}
                       >
-                        {appointment.patient_first_name} {appointment.patient_last_name}
+                        {appointment.patient_first_name || 'Patient'} {appointment.patient_last_name || appointment.patient_id}
                       </Button>
                     </TableCell>
                   )}
@@ -339,6 +351,15 @@ const Appointments = () => {
                   </TableCell>
                   {canModifyAppointment() && (
                     <TableCell>
+                      {user?.role === 'doctor' && (
+                        <Button
+                          size="small"
+                          onClick={() => navigate(`/doctor/patient/${appointment.patient_id}`)}
+                          sx={{ mr: 1 }}
+                        >
+                          Patient File
+                        </Button>
+                      )}
                       <IconButton
                         size="small"
                         onClick={() => handleUpdateStatus(appointment)}
@@ -384,10 +405,10 @@ const Appointments = () => {
             <TextField
               fullWidth
               label="Patient ID"
-              type="number"
+              type="text"
               value={selectedPatient}
               onChange={(e) => setSelectedPatient(e.target.value)}
-              helperText="Enter the patient ID"
+              helperText="Enter a patient ID (example: pat-001)"
             />
 
             <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -437,10 +458,10 @@ const Appointments = () => {
             onChange={(e) => setNewStatus(e.target.value)}
             sx={{ mt: 2 }}
           >
-            <MenuItem value="scheduled">Scheduled</MenuItem>
+            <MenuItem value="pending">Pending</MenuItem>
+            <MenuItem value="confirmed">Confirmed</MenuItem>
             <MenuItem value="completed">Completed</MenuItem>
             <MenuItem value="cancelled">Cancelled</MenuItem>
-            <MenuItem value="no-show">No Show</MenuItem>
           </TextField>
         </DialogContent>
         <DialogActions>
@@ -457,6 +478,17 @@ const Appointments = () => {
     return (
       <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
         <AdminSidebar activeItem="Appointments" />
+        <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
+          {pageContent}
+        </Box>
+      </Box>
+    );
+  }
+
+  if (user?.role === 'doctor') {
+    return (
+      <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
+        <DoctorSidebar activeItem="Appointments" />
         <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
           {pageContent}
         </Box>

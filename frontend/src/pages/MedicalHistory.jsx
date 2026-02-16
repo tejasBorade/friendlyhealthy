@@ -5,6 +5,8 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
   Tabs, Tab, TextField, InputAdornment
 } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import {
   FolderShared as RecordsIcon,
   Science as LabIcon,
@@ -19,9 +21,13 @@ import {
   Bloodtype as BloodIcon
 } from '@mui/icons-material';
 import api from '../services/api';
+import DoctorSidebar from '../components/DoctorSidebar';
 
 const MedicalHistory = () => {
+  const navigate = useNavigate();
+  const { user } = useSelector((state) => state.auth);
   const [records, setRecords] = useState([]);
+  const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tabValue, setTabValue] = useState(0);
@@ -31,12 +37,31 @@ const MedicalHistory = () => {
 
   useEffect(() => {
     fetchRecords();
-  }, []);
+  }, [user]);
 
   const fetchRecords = async () => {
     try {
       const response = await api.get('/medical-records');
       setRecords(response.data.records || []);
+
+      if (user?.role === 'doctor') {
+        const appointmentRes = await api.get('/appointments', {
+          params: user?.doctorId ? { doctorId: user.doctorId } : {},
+        });
+        const appointments = appointmentRes.data.appointments || [];
+        const patientMap = new Map();
+        appointments.forEach((appointment) => {
+          if (!appointment.patient_id || patientMap.has(appointment.patient_id)) {
+            return;
+          }
+          patientMap.set(appointment.patient_id, {
+            id: appointment.patient_id,
+            firstName: appointment.patient_first_name || 'Patient',
+            lastName: appointment.patient_last_name || appointment.patient_id,
+          });
+        });
+        setPatients(Array.from(patientMap.values()));
+      }
     } catch (err) {
       setError('Failed to load medical records');
       console.error(err);
@@ -78,14 +103,27 @@ const MedicalHistory = () => {
   });
 
   if (loading) {
-    return (
+    const loadingContent = (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
         <CircularProgress sx={{ color: '#10b981' }} />
       </Box>
     );
+
+    if (user?.role === 'doctor') {
+      return (
+        <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
+          <DoctorSidebar activeItem="My Patients" />
+          <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
+            {loadingContent}
+          </Box>
+        </Box>
+      );
+    }
+
+    return loadingContent;
   }
 
-  return (
+  const pageContent = (
     <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 50%, #a7f3d0 100%)', py: 4 }}>
       <Container maxWidth="lg">
         {/* Header */}
@@ -96,10 +134,12 @@ const MedicalHistory = () => {
             </Avatar>
             <Box>
               <Typography variant="h4" sx={{ color: 'white', fontWeight: 700 }}>
-                Medical Records
+                {user?.role === 'doctor' ? 'My Patients' : 'Medical Records'}
               </Typography>
               <Typography sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                View your test results and medical reports
+                {user?.role === 'doctor'
+                  ? 'Open patient files to update history, reports, and prescriptions'
+                  : 'View your test results and medical reports'}
               </Typography>
             </Box>
           </Box>
@@ -107,6 +147,43 @@ const MedicalHistory = () => {
 
         {error && (
           <Alert severity="error" sx={{ mb: 3, borderRadius: '12px' }}>{error}</Alert>
+        )}
+
+        {user?.role === 'doctor' && (
+          <Paper sx={{ p: 3, mb: 3, borderRadius: '20px' }}>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>
+              Patient Directory
+            </Typography>
+            {patients.length === 0 ? (
+              <Alert severity="info">
+                No patients found yet. Once appointments are assigned, patients will appear here.
+              </Alert>
+            ) : (
+              <Grid container spacing={2}>
+                {patients.map((patient) => (
+                  <Grid key={patient.id} item xs={12} sm={6} md={4}>
+                    <Card sx={{ borderRadius: '14px' }}>
+                      <CardContent>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                          {patient.firstName} {patient.lastName}
+                        </Typography>
+                        <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                          ID: {patient.id}
+                        </Typography>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          onClick={() => navigate(`/doctor/patient/${patient.id}`)}
+                        >
+                          Open File
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Paper>
         )}
 
         {/* Search and Filter */}
@@ -354,6 +431,19 @@ const MedicalHistory = () => {
       </Container>
     </Box>
   );
+
+  if (user?.role === 'doctor') {
+    return (
+      <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
+        <DoctorSidebar activeItem="My Patients" />
+        <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
+          {pageContent}
+        </Box>
+      </Box>
+    );
+  }
+
+  return pageContent;
 };
 
 export default MedicalHistory;

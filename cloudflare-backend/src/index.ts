@@ -8,6 +8,7 @@ import appointments from './routes/appointments';
 import prescriptions from './routes/prescriptions';
 import billing from './routes/billing';
 import medicalRecords from './routes/medical-records';
+import patients from './routes/patients';
 
 type Bindings = {
   DB: D1Database;
@@ -41,6 +42,7 @@ app.route('/api/v1/appointments', appointments);
 app.route('/api/v1/prescriptions', prescriptions);
 app.route('/api/v1/billing', billing);
 app.route('/api/v1/medical-records', medicalRecords);
+app.route('/api/v1/patients', patients);
 
 // 404 handler
 app.notFound((c) => {

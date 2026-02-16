@@ -134,7 +134,7 @@ const DoctorSearch = () => {
       return;
     }
 
-    const bookingPatientId = user?.role === 'patient' ? patientId : Number(manualPatientId);
+    const bookingPatientId = user?.role === 'patient' ? patientId : manualPatientId.trim();
 
     if (!bookingPatientId) {
       toast.error(
@@ -503,11 +503,12 @@ const DoctorSearch = () => {
             {user?.role !== 'patient' && (
               <TextField
                 fullWidth
-                type="number"
+                type="text"
                 label="Patient ID"
                 value={manualPatientId}
                 onChange={(e) => setManualPatientId(e.target.value)}
-                placeholder="Enter patient ID"
+                placeholder="Enter patient ID (example: pat-001)"
+                helperText="Use patient ID format from your records (for example: pat-001)"
                 sx={{
                   mb: 3,
                   '& .MuiOutlinedInput-root': { borderRadius: 3 },

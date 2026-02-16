@@ -18,6 +18,7 @@ import {
 import api from '../services/api';
 import { useSelector } from 'react-redux';
 import AdminSidebar from '../components/AdminSidebar';
+import DoctorSidebar from '../components/DoctorSidebar';
 
 const Reports = () => {
   const { user } = useSelector((state) => state.auth);
@@ -84,6 +85,17 @@ const Reports = () => {
       return (
         <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
           <AdminSidebar activeItem="Reports" />
+          <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
+            {loadingContent}
+          </Box>
+        </Box>
+      );
+    }
+
+    if (user?.role === 'doctor') {
+      return (
+        <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
+          <DoctorSidebar activeItem="Reports" />
           <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
             {loadingContent}
           </Box>
@@ -393,6 +405,17 @@ const Reports = () => {
     return (
       <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
         <AdminSidebar activeItem="Reports" />
+        <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
+          {pageContent}
+        </Box>
+      </Box>
+    );
+  }
+
+  if (user?.role === 'doctor') {
+    return (
+      <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
+        <DoctorSidebar activeItem="Reports" />
         <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
           {pageContent}
         </Box>
