@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Container,
   Paper,
   TextField,
   Button,
@@ -61,71 +60,153 @@ const Login = () => {
   };
 
   return (
-    <Container maxWidth="sm">
-      <Box
-        sx={{
-          marginTop: 8,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #10b981 0%, #5eead4 100%)',
+        position: 'relative',
+        overflow: 'hidden',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.1) 2px, transparent 2px)',
+          backgroundSize: '40px 40px',
+        },
+      }}
+    >
+      <Paper 
+        elevation={0} 
+        sx={{ 
+          padding: { xs: 4, sm: 6 }, 
+          width: '90%',
+          maxWidth: 450,
+          borderRadius: 6,
+          boxShadow: '0 25px 80px rgba(0, 0, 0, 0.2)',
+          position: 'relative',
+          zIndex: 1,
         }}
       >
-        <Paper elevation={3} sx={{ padding: 4, width: '100%' }}>
-          <Typography component="h1" variant="h4" align="center" gutterBottom>
-            Healthcare Platform
-          </Typography>
-          <Typography component="h2" variant="h6" align="center" color="text.secondary" gutterBottom>
-            Login to Your Account
-          </Typography>
-
-          {error && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              {error}
-            </Alert>
-          )}
-
-          <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              id="email"
-              label="Email Address"
-              name="email"
-              autoComplete="email"
-              autoFocus
-              value={formData.email}
-              onChange={handleChange}
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              name="password"
-              label="Password"
-              type="password"
-              id="password"
-              autoComplete="current-password"
-              value={formData.password}
-              onChange={handleChange}
-            />
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 3, mb: 2 }}
-            >
-              Sign In
-            </Button>
-            <Box sx={{ textAlign: 'center' }}>
-              <Link href="/register" variant="body2">
-                Don't have an account? Register
-              </Link>
-            </Box>
+        <Box sx={{ textAlign: 'center', mb: 4 }}>
+          <Box
+            sx={{
+              width: 70,
+              height: 70,
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              borderRadius: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 20px',
+              fontSize: 32,
+            }}
+          >
+            🏥
           </Box>
-        </Paper>
-      </Box>
-    </Container>
+          <Typography 
+            component="h1" 
+            sx={{ 
+              fontSize: 32, 
+              fontWeight: 800, 
+              color: '#111827',
+              mb: 1
+            }}
+          >
+            Welcome Back
+          </Typography>
+          <Typography sx={{ color: '#6b7280', fontSize: 16 }}>
+            Sign in to your healthcare account
+          </Typography>
+        </Box>
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 3, borderRadius: 3 }}>
+            {error}
+          </Alert>
+        )}
+
+        <Box component="form" onSubmit={handleSubmit}>
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            id="email"
+            label="Email Address"
+            name="email"
+            autoComplete="email"
+            autoFocus
+            value={formData.email}
+            onChange={handleChange}
+            sx={{
+              mb: 2,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 3,
+                '&:hover fieldset': { borderColor: '#10b981' },
+                '&.Mui-focused fieldset': { borderColor: '#10b981' },
+              },
+            }}
+          />
+          <TextField
+            required
+            fullWidth
+            name="password"
+            label="Password"
+            type="password"
+            id="password"
+            autoComplete="current-password"
+            value={formData.password}
+            onChange={handleChange}
+            sx={{
+              mb: 3,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 3,
+                '&:hover fieldset': { borderColor: '#10b981' },
+                '&.Mui-focused fieldset': { borderColor: '#10b981' },
+              },
+            }}
+          />
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            sx={{ 
+              py: 1.5, 
+              mb: 3,
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              borderRadius: 3,
+              fontSize: 16,
+              fontWeight: 600,
+              boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                boxShadow: '0 8px 25px rgba(16, 185, 129, 0.4)',
+              },
+            }}
+          >
+            Sign In
+          </Button>
+          <Box sx={{ textAlign: 'center' }}>
+            <Link 
+              href="/register" 
+              sx={{ 
+                color: '#10b981',
+                textDecoration: 'none',
+                fontWeight: 500,
+                '&:hover': { textDecoration: 'underline' }
+              }}
+            >
+              Don't have an account? Register
+            </Link>
+          </Box>
+        </Box>
+      </Paper>
+    </Box>
   );
 };
 

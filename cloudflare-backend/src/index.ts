@@ -5,6 +5,9 @@ import { prettyJSON } from 'hono/pretty-json';
 import auth from './routes/auth';
 import doctors from './routes/doctors';
 import appointments from './routes/appointments';
+import prescriptions from './routes/prescriptions';
+import billing from './routes/billing';
+import medicalRecords from './routes/medical-records';
 
 type Bindings = {
   DB: D1Database;
@@ -16,7 +19,7 @@ const app = new Hono<{ Bindings: Bindings }>();
 
 // Middleware
 app.use('*', cors({
-  origin: ['http://localhost:3000', 'https://friendlyhealthy.pages.dev'],
+  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003', 'https://friendlyhealthy.pages.dev'],
   credentials: true,
 }));
 app.use('*', logger());
@@ -35,6 +38,9 @@ app.get('/health', (c) => {
 app.route('/api/v1/auth', auth);
 app.route('/api/v1/doctors', doctors);
 app.route('/api/v1/appointments', appointments);
+app.route('/api/v1/prescriptions', prescriptions);
+app.route('/api/v1/billing', billing);
+app.route('/api/v1/medical-records', medicalRecords);
 
 // 404 handler
 app.notFound((c) => {

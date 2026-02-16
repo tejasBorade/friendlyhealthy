@@ -158,40 +158,105 @@ const DoctorSearch = () => {
 
   if (loading) {
     return (
-      <Container sx={{ mt: 4, textAlign: 'center' }}>
-        <Typography>Loading doctors...</Typography>
-      </Container>
+      <Box sx={{ 
+        minHeight: '100vh', 
+        background: '#f9fafb',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <Typography sx={{ color: '#6b7280' }}>Loading doctors...</Typography>
+      </Box>
     );
   }
 
   return (
-    <Container sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <LocalHospitalIcon sx={{ mr: 2, fontSize: 40, color: 'primary.main' }} />
-        Find & Book Doctors
-      </Typography>
+    <Box sx={{ minHeight: '100vh', background: '#f9fafb' }}>
+      {/* Hero Section */}
+      <Box
+        sx={{
+          background: 'linear-gradient(135deg, #10b981 0%, #5eead4 100%)',
+          py: { xs: 6, md: 10 },
+          px: 3,
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.1) 2px, transparent 2px)',
+            backgroundSize: '40px 40px',
+          },
+        }}
+      >
+        <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
+          <Typography
+            sx={{
+              fontSize: { xs: 32, md: 48 },
+              fontWeight: 800,
+              color: 'white',
+              textAlign: 'center',
+              mb: 2,
+            }}
+          >
+            Find the Best <span style={{ opacity: 0.9 }}>Doctors</span> Near You
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: { xs: 16, md: 20 },
+              color: 'rgba(255,255,255,0.9)',
+              textAlign: 'center',
+              mb: 5,
+            }}
+          >
+            Search by specialization, book appointments instantly
+          </Typography>
 
-      {/* Search and Filter */}
-      <Box sx={{ mb: 4 }}>
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={6}>
+          {/* Search Box */}
+          <Box
+            sx={{
+              maxWidth: 800,
+              mx: 'auto',
+              background: 'white',
+              borderRadius: '60px',
+              p: 1.5,
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: 1.5,
+              boxShadow: '0 25px 70px rgba(0, 0, 0, 0.2)',
+            }}
+          >
             <TextField
               fullWidth
               placeholder="Search by name or specialization..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               InputProps={{
-                startAdornment: <SearchIcon sx={{ mr: 1, color: 'action.active' }} />,
+                startAdornment: <SearchIcon sx={{ mr: 1, color: '#9ca3af' }} />,
+              }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  border: 'none',
+                  borderRadius: '50px',
+                  '& fieldset': { border: 'none' },
+                },
               }}
             />
-          </Grid>
-          <Grid item xs={12} md={6}>
             <TextField
-              fullWidth
               select
-              label="Specialization"
               value={selectedSpecialization}
               onChange={(e) => setSelectedSpecialization(e.target.value)}
+              sx={{
+                minWidth: { xs: '100%', sm: 220 },
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '50px',
+                  background: '#f3f4f6',
+                  '& fieldset': { border: 'none' },
+                },
+              }}
             >
               {specializations.map((spec) => (
                 <MenuItem key={spec} value={spec}>
@@ -199,81 +264,184 @@ const DoctorSearch = () => {
                 </MenuItem>
               ))}
             </TextField>
-          </Grid>
-        </Grid>
+          </Box>
+        </Container>
       </Box>
 
-      {/* Results */}
-      <Typography variant="h6" gutterBottom>
-        {filteredDoctors.length} Doctors Available
-      </Typography>
+      {/* Results Section */}
+      <Container maxWidth="lg" sx={{ py: 5 }}>
+        <Typography 
+          sx={{ 
+            fontSize: 24, 
+            fontWeight: 700, 
+            color: '#111827', 
+            mb: 4,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+          }}
+        >
+          <LocalHospitalIcon sx={{ color: '#10b981' }} />
+          {filteredDoctors.length} Doctors Available
+        </Typography>
 
-      {filteredDoctors.length === 0 ? (
-        <Alert severity="info">No doctors found matching your criteria</Alert>
-      ) : (
-        <Grid container spacing={3}>
-          {filteredDoctors.map((doctor) => (
-            <Grid item xs={12} md={6} lg={4} key={doctor.id}>
-              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Avatar sx={{ bgcolor: 'primary.main', width: 56, height: 56, mr: 2 }}>
-                      {doctor.first_name[0]}{doctor.last_name[0]}
+        {filteredDoctors.length === 0 ? (
+          <Box sx={{ textAlign: 'center', py: 8 }}>
+            <Box sx={{ fontSize: 60, mb: 2 }}>🔍</Box>
+            <Typography sx={{ color: '#6b7280', fontSize: 18 }}>
+              No doctors found matching your criteria
+            </Typography>
+          </Box>
+        ) : (
+          <Grid container spacing={3}>
+            {filteredDoctors.map((doctor) => (
+              <Grid item xs={12} md={6} lg={4} key={doctor.id}>
+                <Card 
+                  sx={{ 
+                    height: '100%', 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    borderRadius: 5,
+                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                    transition: 'all 0.4s ease',
+                    overflow: 'hidden',
+                    '&:hover': {
+                      transform: 'translateY(-8px)',
+                      boxShadow: '0 15px 40px rgba(16, 185, 129, 0.2)',
+                    },
+                  }}
+                >
+                  {/* Card Header */}
+                  <Box
+                    sx={{
+                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                      p: 3,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 2,
+                    }}
+                  >
+                    <Avatar 
+                      sx={{ 
+                        width: 70, 
+                        height: 70, 
+                        bgcolor: 'white',
+                        color: '#10b981',
+                        fontSize: 24,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {doctor.first_name?.[0]}{doctor.last_name?.[0]}
                     </Avatar>
                     <Box>
-                      <Typography variant="h6">
+                      <Typography sx={{ color: 'white', fontWeight: 700, fontSize: 20 }}>
                         Dr. {doctor.first_name} {doctor.last_name}
                       </Typography>
                       <Chip 
-                        label={doctor.specialization} 
-                        size="small" 
-                        color="primary" 
-                        variant="outlined"
+                        label={doctor.specialization || 'General'} 
+                        size="small"
+                        sx={{
+                          mt: 1,
+                          bgcolor: 'rgba(255,255,255,0.2)',
+                          color: 'white',
+                          fontWeight: 600,
+                          backdropFilter: 'blur(10px)',
+                        }}
                       />
                     </Box>
                   </Box>
 
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    <strong>Qualification:</strong> {doctor.qualification}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    <strong>Experience:</strong> {doctor.experience_years} years
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    <strong>Consultation Fee:</strong> ${doctor.consultation_fee}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    <strong>Contact:</strong> {doctor.phone}
-                  </Typography>
-                  
-                  {doctor.is_available ? (
-                    <Chip label="Available" color="success" size="small" sx={{ mt: 1 }} />
-                  ) : (
-                    <Chip label="Unavailable" color="error" size="small" sx={{ mt: 1 }} />
-                  )}
-                </CardContent>
+                  {/* Card Body */}
+                  <CardContent sx={{ flexGrow: 1, p: 3 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography sx={{ color: '#9ca3af', fontSize: 13, minWidth: 100 }}>Qualification</Typography>
+                        <Typography sx={{ color: '#374151', fontWeight: 500 }}>{doctor.qualification || 'MBBS'}</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography sx={{ color: '#9ca3af', fontSize: 13, minWidth: 100 }}>Experience</Typography>
+                        <Typography sx={{ color: '#374151', fontWeight: 500 }}>{doctor.experience_years || 0} years</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography sx={{ color: '#9ca3af', fontSize: 13, minWidth: 100 }}>Fee</Typography>
+                        <Typography sx={{ color: '#10b981', fontWeight: 700, fontSize: 18 }}>
+                          ${doctor.consultation_fee || 0}
+                        </Typography>
+                      </Box>
+                      {doctor.city && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography sx={{ color: '#9ca3af', fontSize: 13, minWidth: 100 }}>Location</Typography>
+                          <Typography sx={{ color: '#374151', fontWeight: 500 }}>{doctor.city}</Typography>
+                        </Box>
+                      )}
+                    </Box>
+                    
+                    <Chip 
+                      label={doctor.is_available !== 0 ? "Available" : "Unavailable"}
+                      size="small"
+                      sx={{
+                        mt: 2,
+                        fontWeight: 600,
+                        bgcolor: doctor.is_available !== 0 ? '#d1fae5' : '#fee2e2',
+                        color: doctor.is_available !== 0 ? '#059669' : '#dc2626',
+                      }}
+                    />
+                  </CardContent>
 
-                <Box sx={{ p: 2, pt: 0 }}>
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    onClick={() => handleBookAppointment(doctor)}
-                    disabled={!doctor.is_available || user?.role !== 'patient'}
-                  >
-                    Book Appointment
-                  </Button>
-                </Box>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      )}
+                  {/* Card Footer */}
+                  <Box sx={{ p: 3, pt: 0 }}>
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      onClick={() => handleBookAppointment(doctor)}
+                      disabled={doctor.is_available === 0 || user?.role !== 'patient'}
+                      sx={{
+                        py: 1.5,
+                        borderRadius: 3,
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        fontWeight: 600,
+                        boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
+                        '&:hover': {
+                          boxShadow: '0 8px 25px rgba(16, 185, 129, 0.4)',
+                        },
+                        '&.Mui-disabled': {
+                          background: '#e5e7eb',
+                        },
+                      }}
+                    >
+                      Book Appointment
+                    </Button>
+                  </Box>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        )}
+      </Container>
 
       {/* Booking Dialog */}
-      <Dialog open={bookingDialog} onClose={() => setBookingDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          Book Appointment with Dr. {selectedDoctor?.first_name} {selectedDoctor?.last_name}
+      <Dialog 
+        open={bookingDialog} 
+        onClose={() => setBookingDialog(false)} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 5 }
+        }}
+      >
+        <DialogTitle sx={{ 
+          fontSize: 24, 
+          fontWeight: 700, 
+          color: '#111827',
+          pb: 1,
+        }}>
+          Book Appointment
         </DialogTitle>
+        <Box sx={{ px: 3, pb: 1 }}>
+          <Typography sx={{ color: '#6b7280' }}>
+            with Dr. {selectedDoctor?.first_name} {selectedDoctor?.last_name}
+          </Typography>
+        </Box>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
             <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -282,16 +450,30 @@ const DoctorSearch = () => {
                 value={appointmentDate}
                 onChange={setAppointmentDate}
                 minDate={new Date()}
-                renderInput={(params) => <TextField {...params} fullWidth sx={{ mb: 2 }} />}
-                slotProps={{ textField: { fullWidth: true, sx: { mb: 2 } } }}
+                slotProps={{ 
+                  textField: { 
+                    fullWidth: true, 
+                    sx: { 
+                      mb: 3,
+                      '& .MuiOutlinedInput-root': { borderRadius: 3 }
+                    } 
+                  } 
+                }}
               />
               
               <TimePicker
                 label="Appointment Time"
                 value={appointmentTime}
                 onChange={setAppointmentTime}
-                renderInput={(params) => <TextField {...params} fullWidth sx={{ mb: 2 }} />}
-                slotProps={{ textField: { fullWidth: true, sx: { mb: 2 } } }}
+                slotProps={{ 
+                  textField: { 
+                    fullWidth: true, 
+                    sx: { 
+                      mb: 3,
+                      '& .MuiOutlinedInput-root': { borderRadius: 3 }
+                    } 
+                  } 
+                }}
               />
             </LocalizationProvider>
 
@@ -303,17 +485,38 @@ const DoctorSearch = () => {
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Please describe your symptoms or reason for consultation..."
+              sx={{
+                '& .MuiOutlinedInput-root': { borderRadius: 3 }
+              }}
             />
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setBookingDialog(false)}>Cancel</Button>
-          <Button onClick={handleConfirmBooking} variant="contained">
+        <DialogActions sx={{ p: 3, pt: 0 }}>
+          <Button 
+            onClick={() => setBookingDialog(false)}
+            sx={{ 
+              color: '#6b7280',
+              borderRadius: 3,
+              px: 3,
+            }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleConfirmBooking} 
+            variant="contained"
+            sx={{
+              borderRadius: 3,
+              px: 4,
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
+            }}
+          >
             Confirm Booking
           </Button>
         </DialogActions>
       </Dialog>
-    </Container>
+    </Box>
   );
 };
 

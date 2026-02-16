@@ -2,6 +2,23 @@ import { Hono } from 'hono';
 
 const doctors = new Hono();
 
+// GET /doctors - Get all doctors
+doctors.get('/', async (c) => {
+  try {
+    const results = await c.env.DB.prepare(`
+      SELECT d.*, u.email 
+      FROM doctors d 
+      JOIN users u ON d.user_id = u.id 
+      WHERE d.is_available = 1
+    `).all();
+    
+    return c.json({ doctors: results.results || [] });
+  } catch (error) {
+    console.error('Error fetching doctors:', error);
+    return c.json({ doctors: [] });
+  }
+});
+
 // GET /doctors/search
 doctors.get('/search', async (c) => {
   const specialization = c.req.query('specialization');

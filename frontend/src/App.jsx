@@ -21,14 +21,22 @@ import MedicalHistory from './pages/MedicalHistory';
 import Prescriptions from './pages/Prescriptions';
 import Reports from './pages/Reports';
 import Billing from './pages/Billing';
+import Settings from './pages/Settings';
+import Profile from './pages/Profile';
 
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#1976d2',
+      main: '#10b981',
+      light: '#6ee7b7',
+      dark: '#059669',
     },
     secondary: {
-      main: '#dc004e',
+      main: '#5eead4',
+    },
+    background: {
+      default: '#f9fafb',
+      paper: '#ffffff',
     },
   },
   typography: {
@@ -41,6 +49,61 @@ const theme = createTheme({
       'Arial',
       'sans-serif',
     ].join(','),
+  },
+  shape: {
+    borderRadius: 12,
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          fontWeight: 600,
+          borderRadius: 12,
+          padding: '10px 24px',
+        },
+        containedPrimary: {
+          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+          boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
+          '&:hover': {
+            background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+            boxShadow: '0 8px 25px rgba(16, 185, 129, 0.4)',
+          },
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          borderRadius: 20,
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: 20,
+        },
+      },
+    },
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          '& .MuiOutlinedInput-root': {
+            borderRadius: 12,
+          },
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        colorPrimary: {
+          backgroundColor: '#d1fae5',
+          color: '#059669',
+        },
+      },
+    },
   },
 });
 
@@ -228,6 +291,22 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['patient', 'admin', 'staff']}>
                   <Billing />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute allowedRoles={['patient', 'doctor', 'admin', 'staff']}>
+                  <Settings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute allowedRoles={['patient', 'doctor', 'admin', 'staff']}>
+                  <Profile />
                 </ProtectedRoute>
               }
             />

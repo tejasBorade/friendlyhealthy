@@ -4,12 +4,16 @@ const appointments = new Hono();
 
 // GET /appointments
 appointments.get('/', async (c) => {
-  // This would need JWT authentication middleware
-  const results = await c.env.DB.prepare(
-    'SELECT * FROM appointments ORDER BY appointment_date DESC LIMIT 20'
-  ).all();
-  
-  return c.json(results.results);
+  try {
+    const results = await c.env.DB.prepare(
+      'SELECT * FROM appointments ORDER BY appointment_date DESC LIMIT 20'
+    ).all();
+    
+    return c.json({ appointments: results.results || [] });
+  } catch (error) {
+    console.error('Error fetching appointments:', error);
+    return c.json({ appointments: [] });
+  }
 });
 
 // POST /appointments

@@ -8,9 +8,9 @@ export const authService = {
 
   login: async (credentials) => {
     const response = await api.post('/auth/login', credentials);
-    const { token, user } = response.data;
+    const { access_token, user } = response.data;
     
-    localStorage.setItem('accessToken', token);
+    localStorage.setItem('accessToken', access_token);
     localStorage.setItem('user', JSON.stringify(user));
     
     return response.data;
@@ -115,18 +115,28 @@ export const prescriptionService = {
 };
 
 export const medicalHistoryService = {
+  getAll: async (params) => {
+    const response = await api.get('/medical-records', { params });
+    return response.data;
+  },
+
+  getById: async (id) => {
+    const response = await api.get(`/medical-records/${id}`);
+    return response.data;
+  },
+
   getPatientHistory: async (patientId) => {
-    const response = await api.get(`/medical-history/patient/${patientId}`);
+    const response = await api.get(`/medical-records/patient/${patientId}`);
     return response.data;
   },
 
   create: async (historyData) => {
-    const response = await api.post('/medical-history', historyData);
+    const response = await api.post('/medical-records', historyData);
     return response.data;
   },
 
   update: async (id, historyData) => {
-    const response = await api.put(`/medical-history/${id}`, historyData);
+    const response = await api.put(`/medical-records/${id}`, historyData);
     return response.data;
   },
 };
@@ -154,22 +164,22 @@ export const reportService = {
 
 export const billingService = {
   getAll: async (params) => {
-    const response = await api.get('/bills', { params });
+    const response = await api.get('/billing', { params });
     return response.data;
   },
 
   getById: async (id) => {
-    const response = await api.get(`/bills/${id}`);
+    const response = await api.get(`/billing/${id}`);
     return response.data;
   },
 
   create: async (billData) => {
-    const response = await api.post('/bills', billData);
+    const response = await api.post('/billing', billData);
     return response.data;
   },
 
   updatePaymentStatus: async (id, paymentData) => {
-    const response = await api.patch(`/bills/${id}/payment`, paymentData);
+    const response = await api.patch(`/billing/${id}/pay`, paymentData);
     return response.data;
   },
 };
