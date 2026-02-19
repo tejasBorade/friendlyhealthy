@@ -9,7 +9,7 @@ doctors.get('/', async (c) => {
       SELECT d.*, u.email 
       FROM doctors d 
       JOIN users u ON d.user_id = u.id 
-      WHERE d.is_available = 1
+      WHERE d.is_deleted = 0 AND u.is_deleted = 0
     `).all();
     
     return c.json({ doctors: results.results || [] });
@@ -28,7 +28,7 @@ doctors.get('/search', async (c) => {
     SELECT d.*, u.email 
     FROM doctors d 
     JOIN users u ON d.user_id = u.id 
-    WHERE d.is_available = 1
+    WHERE d.is_deleted = 0 AND u.is_deleted = 0
   `;
   
   const params = [];

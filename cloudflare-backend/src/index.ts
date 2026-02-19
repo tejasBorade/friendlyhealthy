@@ -20,7 +20,15 @@ const app = new Hono<{ Bindings: Bindings }>();
 
 // Middleware
 app.use('*', cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003', 'https://friendlyhealthy.pages.dev'],
+  origin: (origin) => {
+    // Allow localhost for development
+    if (origin?.includes('localhost')) return origin;
+    // Allow all Cloudflare Pages deployments
+    if (origin?.endsWith('.pages.dev')) return origin;
+    // Allow specific production domain
+    if (origin === 'https://friendlyhealthy.pages.dev') return origin;
+    return 'http://localhost:3000'; // Fallback
+  },
   credentials: true,
 }));
 app.use('*', logger());

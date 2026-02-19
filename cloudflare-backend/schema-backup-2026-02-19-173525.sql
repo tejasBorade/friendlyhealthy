@@ -1,14 +1,3 @@
--- ============================================================
--- DEPRECATED: This file has been replaced by schema-complete.sql
--- See schema-complete.sql for the full comprehensive schema
--- Deployed to Cloudflare D1: 2026-02-19
--- ============================================================
-
--- All tables, indexes, triggers, and seed data are now in schema-complete.sql
--- Total tables: 25
--- Includes: Users, Patients, Doctors, Appointments, Consultations, 
--- Prescriptions, Medical Records, Billing, Notifications, Audit Logs, etc.
-
 -- Cloudflare D1 Database Schema (SQLite)
 
 -- Users table
