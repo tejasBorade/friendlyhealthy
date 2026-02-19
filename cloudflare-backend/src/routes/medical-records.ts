@@ -37,14 +37,14 @@ app.get('/', authMiddleware, async (c) => {
         records = await c.env.DB.prepare(`
           SELECT 
             mr.id, mr.patient_id, mr.doctor_id, mr.appointment_id,
-            mr.record_type, mr.title, mr.description, mr.file_url,
-            mr.test_date, mr.result_summary, mr.created_at,
+            mr.report_type, mr.report_name, mr.doctor_remarks, mr.file_url,
+            mr.test_date, mr.result_summary, mr.created_at, mr.test_name, mr.lab_name,
             d.first_name as doctor_first_name, d.last_name as doctor_last_name, d.specialization,
-            a.appointment_date, a.reason as appointment_reason
-        FROM medical_records mr
+            a.appointment_date, a.reason_for_visit as appointment_reason
+        FROM medical_reports mr
         LEFT JOIN doctors d ON mr.doctor_id = d.id
         LEFT JOIN appointments a ON mr.appointment_id = a.id
-        WHERE mr.patient_id = ?
+        WHERE mr.patient_id = ? AND mr.is_deleted = 0
         ORDER BY mr.test_date DESC
       `).bind(patientResult.id).all();
     } else {
@@ -57,14 +57,14 @@ app.get('/', authMiddleware, async (c) => {
         let doctorQuery = `
           SELECT 
             mr.id, mr.patient_id, mr.doctor_id, mr.appointment_id,
-            mr.record_type, mr.title, mr.description, mr.file_url,
-            mr.test_date, mr.result_summary, mr.created_at,
+            mr.report_type, mr.report_name, mr.doctor_remarks, mr.file_url,
+            mr.test_date, mr.result_summary, mr.created_at, mr.test_name, mr.lab_name,
             pt.first_name as patient_first_name, pt.last_name as patient_last_name,
-            a.appointment_date, a.reason as appointment_reason
-          FROM medical_records mr
+            a.appointment_date, a.reason_for_visit as appointment_reason
+          FROM medical_reports mr
           JOIN patients pt ON mr.patient_id = pt.id
           LEFT JOIN appointments a ON mr.appointment_id = a.id
-          WHERE mr.doctor_id = ?
+          WHERE mr.doctor_id = ? AND mr.is_deleted = 0
         `;
 
         const doctorParams = [doctorResult.id];
@@ -80,16 +80,16 @@ app.get('/', authMiddleware, async (c) => {
         let adminQuery = `
           SELECT 
             mr.id, mr.patient_id, mr.doctor_id, mr.appointment_id,
-            mr.record_type, mr.title, mr.description, mr.file_url,
-            mr.test_date, mr.result_summary, mr.created_at,
+            mr.report_type, mr.report_name, mr.doctor_remarks, mr.file_url,
+            mr.test_date, mr.result_summary, mr.created_at, mr.test_name, mr.lab_name,
             pt.first_name as patient_first_name, pt.last_name as patient_last_name,
             d.first_name as doctor_first_name, d.last_name as doctor_last_name,
             a.appointment_date
-          FROM medical_records mr
+          FROM medical_reports mr
           JOIN patients pt ON mr.patient_id = pt.id
           LEFT JOIN doctors d ON mr.doctor_id = d.id
           LEFT JOIN appointments a ON mr.appointment_id = a.id
-          WHERE 1 = 1
+          WHERE mr.is_deleted = 0
         `;
 
         const adminParams: string[] = [];
@@ -133,33 +133,41 @@ app.post('/', authMiddleware, async (c) => {
     ).bind(user.sub).first();
 
     const doctorId = doctorResult?.id || body.doctorId || body.doctor_id || null;
-    const recordType = body.recordType || body.record_type || body.reportType || 'Clinical Note';
-    const title = body.title || body.diagnosis || body.reportType || 'Medical Record';
-    const description = body.description ||
+    const reportType = body.reportType || body.report_type || body.recordType || 'other';
+    const reportName = body.reportName || body.report_name || body.title || body.diagnosis || 'Medical Report';
+    const doctorRemarks = body.doctorRemarks || body.doctor_remarks || body.description ||
       [body.symptoms, body.treatment, body.notes].filter(Boolean).join(' | ') ||
       null;
+    const reportFilePath = body.reportFilePath || body.report_file_path || body.fileUrl || body.file_url || '/reports/default.pdf';
     const fileUrl = body.fileUrl || body.file_url || null;
     const testDate = body.testDate || body.test_date || body.visitDate || body.reportDate || new Date().toISOString().split('T')[0];
+    const testName = body.testName || body.test_name || null;
+    const labName = body.labName || body.lab_name || null;
     const resultSummary = body.resultSummary || body.result_summary || body.findings || body.notes || null;
     const appointmentId = body.appointmentId || body.appointment_id || null;
 
     const recordId = crypto.randomUUID();
     await c.env.DB.prepare(`
-      INSERT INTO medical_records (
-        id, patient_id, doctor_id, appointment_id, record_type, title,
-        description, file_url, test_date, result_summary, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO medical_reports (
+        id, patient_id, doctor_id, appointment_id, report_type, report_name,
+        doctor_remarks, report_file_path, file_url, test_date, test_name, lab_name,
+        result_summary, uploaded_by, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       recordId,
       String(patientId),
       doctorId ? String(doctorId) : null,
       appointmentId ? String(appointmentId) : null,
-      String(recordType),
-      String(title),
-      description ? String(description) : null,
+      String(reportType),
+      String(reportName),
+      doctorRemarks ? String(doctorRemarks) : null,
+      String(reportFilePath),
       fileUrl ? String(fileUrl) : null,
       String(testDate),
+      testName ? String(testName) : null,
+      labName ? String(labName) : null,
       resultSummary ? String(resultSummary) : null,
+      String(user.sub),
       new Date().toISOString()
     ).run();
 
@@ -178,16 +186,16 @@ app.get('/:id', authMiddleware, async (c) => {
     
     const record = await c.env.DB.prepare(`
       SELECT 
-        mr.id, mr.record_type, mr.title, mr.description, mr.file_url,
-        mr.test_date, mr.result_summary, mr.created_at,
+        mr.id, mr.report_type, mr.report_name, mr.doctor_remarks, mr.file_url,
+        mr.test_date, mr.test_name, mr.lab_name, mr.result_summary, mr.created_at,
         pt.first_name as patient_first_name, pt.last_name as patient_last_name,
         d.first_name as doctor_first_name, d.last_name as doctor_last_name, d.specialization,
-        a.appointment_date, a.reason as appointment_reason
-      FROM medical_records mr
+        a.appointment_date, a.reason_for_visit as appointment_reason
+      FROM medical_reports mr
       JOIN patients pt ON mr.patient_id = pt.id
       LEFT JOIN doctors d ON mr.doctor_id = d.id
       LEFT JOIN appointments a ON mr.appointment_id = a.id
-      WHERE mr.id = ?
+      WHERE mr.id = ? AND mr.is_deleted = 0
     `).bind(id).first();
 
     if (!record) {

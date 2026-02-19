@@ -11,12 +11,15 @@ appointments.get('/', async (c) => {
     let query = `
       SELECT
         a.id,
+        a.appointment_number,
         a.patient_id,
         a.doctor_id,
+        a.clinic_id,
         a.appointment_date,
         a.appointment_time,
-        a.reason,
-        a.notes,
+        a.reason_for_visit,
+        a.symptoms,
+        a.doctor_notes,
         a.status,
         a.created_at,
         p.first_name AS patient_first_name,
@@ -27,7 +30,7 @@ appointments.get('/', async (c) => {
       FROM appointments a
       LEFT JOIN patients p ON a.patient_id = p.id
       LEFT JOIN doctors d ON a.doctor_id = d.id
-      WHERE 1 = 1
+      WHERE a.is_deleted = 0
     `;
     const params: string[] = [];
 
@@ -58,9 +61,10 @@ appointments.post('/', async (c) => {
 
     const patientId = body.patient_id ?? body.patientId;
     const doctorId = body.doctor_id ?? body.doctorId;
+    const clinicId = body.clinic_id ?? body.clinicId ?? null;
     const appointmentDate = body.appointment_date ?? body.appointmentDate;
     const appointmentTime = body.appointment_time ?? body.appointmentTime;
-    const reason = body.reason ?? null;
+    const reasonForVisit = body.reason_for_visit ?? body.reasonForVisit ?? body.reason ?? null;
 
     if (!patientId || !doctorId || !appointmentDate || !appointmentTime) {
       return c.json(
@@ -73,26 +77,31 @@ appointments.post('/', async (c) => {
     }
 
     const appointmentId = crypto.randomUUID();
+    const appointmentNumber = `APT-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
 
     await c.env.DB.prepare(`
       INSERT INTO appointments (
         id,
+        appointment_number,
         patient_id,
         doctor_id,
+        clinic_id,
         appointment_date,
         appointment_time,
-        reason,
+        reason_for_visit,
         status,
         created_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'booked', ?)
     `).bind(
       appointmentId,
+      appointmentNumber,
       String(patientId),
       String(doctorId),
+      clinicId ? String(clinicId) : null,
       String(appointmentDate),
       String(appointmentTime),
-      reason ? String(reason) : null,
+      reasonForVisit ? String(reasonForVisit) : null,
       new Date().toISOString()
     ).run();
 
@@ -122,14 +131,14 @@ appointments.patch('/:id', async (c) => {
     const body = await c.req.json();
     const status = body.status;
 
-    if (!['pending', 'confirmed', 'completed', 'cancelled'].includes(status)) {
+    if (!['booked', 'confirmed', 'completed', 'cancelled', 'rejected', 'no-show'].includes(status)) {
       return c.json({ error: 'Invalid status' }, 400);
     }
 
     const result = await c.env.DB.prepare(`
       UPDATE appointments
-      SET status = ?
-      WHERE id = ?
+      SET status = ?, status_updated_at = datetime('now'), updated_at = datetime('now')
+      WHERE id = ? AND is_deleted = 0
     `).bind(status, id).run();
 
     if (!result.success) {
@@ -150,8 +159,8 @@ appointments.delete('/:id', async (c) => {
 
     const result = await c.env.DB.prepare(`
       UPDATE appointments
-      SET status = 'cancelled'
-      WHERE id = ?
+      SET status = 'cancelled', cancelled_at = datetime('now'), updated_at = datetime('now')
+      WHERE id = ? AND is_deleted = 0
     `).bind(id).run();
 
     if (!result.success) {

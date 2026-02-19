@@ -244,12 +244,12 @@ const Billing = () => {
                 </TableHead>
                 <TableBody>
                   {bills.map((bill) => {
-                    const statusStyle = getStatusColor(bill.status);
+                    const statusStyle = getStatusColor(bill.payment_status);
                     return (
                       <TableRow key={bill.id} hover>
                         <TableCell>
                           <Box>
-                            <Typography variant="body2" fontWeight={600}>{bill.description}</Typography>
+                            <Typography variant="body2" fontWeight={600}>{bill.bill_number || 'Bill'}</Typography>
                             {bill.doctor_first_name && (
                               <Typography variant="caption" color="textSecondary">
                                 Dr. {bill.doctor_first_name} {bill.doctor_last_name}
@@ -257,13 +257,13 @@ const Billing = () => {
                             )}
                           </Box>
                         </TableCell>
-                        <TableCell>{formatDate(bill.appointment_date || bill.created_at)}</TableCell>
-                        <TableCell>{formatCurrency(bill.amount)}</TableCell>
-                        <TableCell>{formatCurrency(bill.tax)}</TableCell>
-                        <TableCell sx={{ fontWeight: 600 }}>{formatCurrency(bill.total)}</TableCell>
+                        <TableCell>{formatDate(bill.bill_date || bill.created_at)}</TableCell>
+                        <TableCell>{formatCurrency(bill.subtotal)}</TableCell>
+                        <TableCell>{formatCurrency(bill.tax_amount)}</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>{formatCurrency(bill.total_amount)}</TableCell>
                         <TableCell>
                           <Chip 
-                            label={bill.status.toUpperCase()} 
+                            label={bill.payment_status?.toUpperCase() || 'PENDING'} 
                             size="small"
                             sx={{ 
                               bgcolor: statusStyle.bg, 
@@ -274,7 +274,7 @@ const Billing = () => {
                           />
                         </TableCell>
                         <TableCell>
-                          {bill.status === 'pending' ? (
+                          {bill.payment_status === 'pending' ? (
                             <Button
                               variant="contained"
                               size="small"
@@ -325,22 +325,22 @@ const Billing = () => {
               <Box>
                 <Paper sx={{ p: 3, borderRadius: '12px', bgcolor: '#f0fdf4', mb: 3 }}>
                   <Typography variant="h6" fontWeight={600} gutterBottom>
-                    {selectedBill.description}
+                    {selectedBill.bill_number || 'Bill Payment'}
                   </Typography>
                   <Divider sx={{ my: 2 }} />
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                     <Typography>Amount:</Typography>
-                    <Typography>{formatCurrency(selectedBill.amount)}</Typography>
+                    <Typography>{formatCurrency(selectedBill.subtotal)}</Typography>
                   </Box>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                     <Typography>Tax (18%):</Typography>
-                    <Typography>{formatCurrency(selectedBill.tax)}</Typography>
+                    <Typography>{formatCurrency(selectedBill.tax_amount)}</Typography>
                   </Box>
                   <Divider sx={{ my: 1 }} />
                   <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Typography fontWeight={600}>Total:</Typography>
                     <Typography fontWeight={600} color="primary">
-                      {formatCurrency(selectedBill.total)}
+                      {formatCurrency(selectedBill.total_amount)}
                     </Typography>
                   </Box>
                 </Paper>

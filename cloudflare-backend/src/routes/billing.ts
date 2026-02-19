@@ -35,29 +35,30 @@ app.get('/', authMiddleware, async (c) => {
       // Patient: get their bills
       bills = await c.env.DB.prepare(`
         SELECT 
-          b.id, b.description, b.amount, b.tax, b.total, b.status,
-          b.payment_method, b.payment_date, b.due_date, b.created_at,
+          b.id, b.bill_number, b.subtotal, b.tax_amount, b.discount_amount, b.total_amount, b.payment_status,
+          b.payment_method, b.payment_date, b.due_date, b.bill_date, b.notes, b.created_at,
           a.appointment_date,
           d.first_name as doctor_first_name, d.last_name as doctor_last_name
-        FROM billing b
+        FROM bills b
         LEFT JOIN appointments a ON b.appointment_id = a.id
         LEFT JOIN doctors d ON a.doctor_id = d.id
-        WHERE b.patient_id = ?
+        WHERE b.patient_id = ? AND b.is_deleted = 0
         ORDER BY b.created_at DESC
       `).bind(patientResult.id).all();
     } else {
       // Admin: get all bills
       bills = await c.env.DB.prepare(`
         SELECT 
-          b.id, b.description, b.amount, b.tax, b.total, b.status,
-          b.payment_method, b.payment_date, b.due_date, b.created_at,
+          b.id, b.bill_number, b.subtotal, b.tax_amount, b.discount_amount, b.total_amount, b.payment_status,
+          b.payment_method, b.payment_date, b.due_date, b.bill_date, b.notes, b.created_at,
           pt.first_name as patient_first_name, pt.last_name as patient_last_name,
           a.appointment_date,
           d.first_name as doctor_first_name, d.last_name as doctor_last_name
-        FROM billing b
+        FROM bills b
         JOIN patients pt ON b.patient_id = pt.id
         LEFT JOIN appointments a ON b.appointment_id = a.id
         LEFT JOIN doctors d ON a.doctor_id = d.id
+        WHERE b.is_deleted = 0
         ORDER BY b.created_at DESC
       `).all();
     }
@@ -65,12 +66,12 @@ app.get('/', authMiddleware, async (c) => {
     // Calculate summary
     const allBills = bills?.results || [];
     const summary = {
-      total_amount: allBills.reduce((sum: number, b: any) => sum + (b.total || 0), 0),
-      paid_amount: allBills.filter((b: any) => b.status === 'paid').reduce((sum: number, b: any) => sum + (b.total || 0), 0),
-      pending_amount: allBills.filter((b: any) => b.status === 'pending').reduce((sum: number, b: any) => sum + (b.total || 0), 0),
+      total_amount: allBills.reduce((sum: number, b: any) => sum + (b.total_amount || 0), 0),
+      paid_amount: allBills.filter((b: any) => b.payment_status === 'paid').reduce((sum: number, b: any) => sum + (b.total_amount || 0), 0),
+      pending_amount: allBills.filter((b: any) => b.payment_status === 'pending').reduce((sum: number, b: any) => sum + (b.total_amount || 0), 0),
       total_bills: allBills.length,
-      paid_bills: allBills.filter((b: any) => b.status === 'paid').length,
-      pending_bills: allBills.filter((b: any) => b.status === 'pending').length,
+      paid_bills: allBills.filter((b: any) => b.payment_status === 'paid').length,
+      pending_bills: allBills.filter((b: any) => b.payment_status === 'pending').length,
     };
 
     return c.json({ bills: allBills, summary });
@@ -87,17 +88,17 @@ app.get('/:id', authMiddleware, async (c) => {
     
     const bill = await c.env.DB.prepare(`
       SELECT 
-        b.id, b.description, b.amount, b.tax, b.total, b.status,
-        b.payment_method, b.payment_date, b.due_date, b.created_at,
+        b.id, b.bill_number, b.subtotal, b.tax_amount, b.discount_amount, b.total_amount, b.payment_status,
+        b.payment_method, b.payment_date, b.due_date, b.bill_date, b.notes, b.created_at,
         pt.first_name as patient_first_name, pt.last_name as patient_last_name,
         pt.phone as patient_phone, pt.address as patient_address,
-        a.appointment_date, a.reason as appointment_reason,
-        d.first_name as doctor_first_name, d.last_name as doctor_last_name, d.specialization
-      FROM billing b
+        a.appointment_date, a.reason_for_visit as appointment_reason,
+        d.first_name as doctor_first_name, d.last_name as doctor_last_name
+      FROM bills b
       JOIN patients pt ON b.patient_id = pt.id
       LEFT JOIN appointments a ON b.appointment_id = a.id
       LEFT JOIN doctors d ON a.doctor_id = d.id
-      WHERE b.id = ?
+      WHERE b.id = ? AND b.is_deleted = 0
     `).bind(id).first();
 
     if (!bill) {
@@ -118,9 +119,9 @@ app.patch('/:id/pay', authMiddleware, async (c) => {
     const { payment_method } = await c.req.json();
     
     await c.env.DB.prepare(`
-      UPDATE billing 
-      SET status = 'paid', payment_method = ?, payment_date = datetime('now')
-      WHERE id = ?
+      UPDATE bills 
+      SET payment_status = 'paid', payment_method = ?, payment_date = datetime('now'), updated_at = datetime('now')
+      WHERE id = ? AND is_deleted = 0
     `).bind(payment_method || 'Online', id).run();
 
     return c.json({ message: 'Payment successful' });
