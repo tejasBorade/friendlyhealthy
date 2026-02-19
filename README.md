@@ -258,7 +258,7 @@ See `backend/.env.example` for required environment variables.
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under me.
 
 ## Support
 
