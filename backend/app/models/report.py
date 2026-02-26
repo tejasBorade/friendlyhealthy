@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, Date, Text, Boolean, DateTime, Enum as SQLEnum, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
 import uuid
 import enum
@@ -34,3 +34,9 @@ class MedicalReport(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     is_deleted = Column(Boolean, default=False)
+
+    # SymptoTrack: Report linking & structured data for trends
+    prescription_id = Column(UUID(as_uuid=True), ForeignKey("prescriptions.id", ondelete="SET NULL"), nullable=True, index=True)
+    test_order_id = Column(UUID(as_uuid=True), ForeignKey("tests_ordered.id", ondelete="SET NULL"), nullable=True)
+    follow_up_date = Column(Date, nullable=True)
+    structured_values = Column(JSONB, nullable=True)  # {"HbA1c": 6.5, "glucose": 110}

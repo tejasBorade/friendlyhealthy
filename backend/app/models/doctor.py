@@ -28,6 +28,16 @@ class Doctor(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     is_deleted = Column(Boolean, default=False)
 
+    # SymptoTrack: Clinic, NMC verification, digital signature
+    clinic_name = Column(String(200), nullable=True)
+    clinic_address = Column(Text, nullable=True)
+    clinic_logo = Column(String(500), nullable=True)
+    nmc_verified = Column(Boolean, default=False)
+    nmc_verified_at = Column(DateTime(timezone=True), nullable=True)
+    digital_signature_path = Column(String(500), nullable=True)
+    state_medical_council = Column(String(100), nullable=True)
+    hfr_id = Column(String(50), nullable=True)  # Health Facility Registry ID
+
 
 class Specialization(Base):
     __tablename__ = "specializations"

@@ -35,3 +35,11 @@ class Patient(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     is_deleted = Column(Boolean, default=False)
+
+    # SymptoTrack: ABHA & health profile
+    abha_id = Column(String(50), unique=True, nullable=True, index=True)
+    abha_address = Column(String(100), nullable=True)
+    known_allergies = Column(Text, nullable=True)
+    chronic_conditions = Column(Text, nullable=True)
+    caregiver_name = Column(String(200), nullable=True)
+    caregiver_phone = Column(String(20), nullable=True)

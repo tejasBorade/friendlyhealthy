@@ -61,6 +61,16 @@ class Prescription(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     is_deleted = Column(Boolean, default=False)
 
+    # SymptoTrack: Signing, PDF, follow-up, patient-friendly diagnosis
+    follow_up_date = Column(Date, nullable=True)
+    patient_instructions = Column(Text, nullable=True)
+    is_signed = Column(Boolean, default=False)
+    signed_at = Column(DateTime(timezone=True), nullable=True)
+    pdf_path = Column(String(500), nullable=True)
+    is_locked = Column(Boolean, default=False)  # Immutable after signing
+    diagnosis_icd10_code = Column(String(20), nullable=True)
+    diagnosis_patient_friendly = Column(Text, nullable=True)
+
 
 class PrescriptionMedicine(Base):
     __tablename__ = "prescription_medicines"
