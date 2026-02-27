@@ -300,9 +300,7 @@ class NotificationService:
         )
 
 
-# Legacy functions for backward compatibility
-
-
+# Legacy helper functions for backward compatibility
 async def send_appointment_confirmation(
     db: AsyncSession,
     user_id: UUID,
@@ -310,25 +308,18 @@ async def send_appointment_confirmation(
     appointment_details: dict
 ):
     """Send appointment confirmation notification."""
-    title = "Appointment Confirmed"
+    title = "📅 Appointment Confirmed"
     message = f"Your appointment with Dr. {appointment_details['doctor_name']} on {appointment_details['date']} at {appointment_details['time']} has been confirmed."
     
-    await create_notification(
-        db=db,
+    return await NotificationService.send_notification(
         user_id=user_id,
-        notification_type=NotificationType.APPOINTMENT,
+        notification_type="appointment",
         title=title,
         message=message,
-        priority=NotificationPriority.HIGH,
-        related_entity_type="appointment",
-        related_entity_id=appointment_id
+        data={"appointment_id": str(appointment_id)},
+        force_send=True,
+        db=db
     )
-    
-    # Send email if user has email
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if user and user.email:
-        send_email_task.delay(user.email, title, message)
 
 
 async def send_appointment_reminder(
@@ -338,25 +329,18 @@ async def send_appointment_reminder(
     appointment_details: dict
 ):
     """Send appointment reminder notification."""
-    title = "Appointment Reminder"
+    title = "📅 Appointment Reminder"
     message = f"Reminder: You have an appointment with Dr. {appointment_details['doctor_name']} tomorrow at {appointment_details['time']}."
     
-    await create_notification(
-        db=db,
+    return await NotificationService.send_notification(
         user_id=user_id,
-        notification_type=NotificationType.APPOINTMENT,
+        notification_type="appointment",
         title=title,
         message=message,
-        priority=NotificationPriority.HIGH,
-        related_entity_type="appointment",
-        related_entity_id=appointment_id
+        data={"appointment_id": str(appointment_id)},
+        force_send=True,
+        db=db
     )
-    
-    # Send SMS for reminders
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if user and user.email:
-        send_email_task.delay(user.email, title, message)
 
 
 async def send_prescription_notification(
@@ -365,18 +349,16 @@ async def send_prescription_notification(
     prescription_id: UUID
 ):
     """Send new prescription notification."""
-    title = "New Prescription"
+    title = "📋 New Prescription"
     message = "Your doctor has created a new prescription for you. You can view and download it from your dashboard."
     
-    await create_notification(
-        db=db,
+    return await NotificationService.send_notification(
         user_id=user_id,
-        notification_type=NotificationType.PRESCRIPTION,
+        notification_type="prescription",
         title=title,
         message=message,
-        priority=NotificationPriority.NORMAL,
-        related_entity_type="prescription",
-        related_entity_id=prescription_id
+        data={"prescription_id": str(prescription_id)},
+        db=db
     )
 
 
@@ -387,18 +369,16 @@ async def send_bill_notification(
     amount: str
 ):
     """Send bill notification."""
-    title = "New Bill Generated"
+    title = "💰 New Bill Generated"
     message = f"A bill of {amount} has been generated. Please review and make the payment."
     
-    await create_notification(
-        db=db,
+    return await NotificationService.send_notification(
         user_id=user_id,
-        notification_type=NotificationType.BILLING,
+        notification_type="billing",
         title=title,
         message=message,
-        priority=NotificationPriority.NORMAL,
-        related_entity_type="bill",
-        related_entity_id=bill_id
+        data={"bill_id": str(bill_id)},
+        db=db
     )
 
 
@@ -409,18 +389,16 @@ async def send_report_upload_notification(
     report_name: str
 ):
     """Send report upload notification."""
-    title = "Medical Report Uploaded"
+    title = "📊 Medical Report Uploaded"
     message = f"A new medical report '{report_name}' has been uploaded to your account."
     
-    await create_notification(
-        db=db,
+    return await NotificationService.send_notification(
         user_id=user_id,
-        notification_type=NotificationType.GENERAL,
+        notification_type="report",
         title=title,
         message=message,
-        priority=NotificationPriority.LOW,
-        related_entity_type="report",
-        related_entity_id=report_id
+        data={"report_id": str(report_id)},
+        db=db
     )
 
 
@@ -432,16 +410,14 @@ async def send_payment_confirmation(
     transaction_id: str
 ):
     """Send payment confirmation notification."""
-    title = "Payment Successful"
+    title = "✅ Payment Successful"
     message = f"Your payment of {amount} has been received successfully. Transaction ID: {transaction_id}"
     
-    await create_notification(
-        db=db,
+    return await NotificationService.send_notification(
         user_id=user_id,
-        notification_type=NotificationType.BILLING,
+        notification_type="billing",
         title=title,
         message=message,
-        priority=NotificationPriority.NORMAL,
-        related_entity_type="bill",
-        related_entity_id=bill_id
+        data={"bill_id": str(bill_id), "transaction_id": transaction_id},
+        db=db
     )

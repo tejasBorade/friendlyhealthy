@@ -72,13 +72,18 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def general_exception_handler(request: Request, exc: Exception):
     """Handle general exceptions."""
     logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+    
+    # In development, return detailed error for debugging
+    error_detail = str(exc) if settings.DEBUG else "An internal error occurred"
+    
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "success": False,
             "error": {
                 "code": "INTERNAL_ERROR",
-                "message": "An internal error occurred"
+                "message": error_detail,
+                "type": type(exc).__name__ if settings.DEBUG else None
             }
         }
     )

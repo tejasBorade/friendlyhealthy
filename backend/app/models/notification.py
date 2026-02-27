@@ -10,12 +10,23 @@ class NotificationType(str, enum.Enum):
     EMAIL = "email"
     SMS = "sms"
     APP = "app"
+    APPOINTMENT = "appointment"
+    PRESCRIPTION = "prescription"
+    BILLING = "billing"
+    GENERAL = "general"
 
 
 class NotificationStatus(str, enum.Enum):
     PENDING = "pending"
     SENT = "sent"
     FAILED = "failed"
+
+
+class NotificationPriority(str, enum.Enum):
+    LOW = "low"
+    NORMAL = "normal"
+    HIGH = "high"
+    URGENT = "urgent"
 
 
 class Notification(Base):
@@ -30,7 +41,7 @@ class Notification(Base):
     scheduled_at = Column(DateTime(timezone=True), nullable=True, index=True)
     sent_at = Column(DateTime(timezone=True), nullable=True)
     error_message = Column(Text, nullable=True)
-    metadata = Column(JSONB, nullable=True)
+    meta_data = Column(JSONB, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
