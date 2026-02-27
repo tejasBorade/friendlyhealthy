@@ -5,7 +5,11 @@ from datetime import datetime, timedelta
 from app.core.database import get_db
 from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token, decode_token, validate_password_strength
 from app.models.user import User, RefreshToken
-from app.schemas.auth import UserCreate, UserLogin, TokenResponse, RefreshTokenRequest, UserResponse
+from app.schemas.auth import (
+    UserCreate, UserLogin, TokenResponse, RefreshTokenRequest, UserResponse,
+    SendOTPRequest, SendOTPResponse, VerifyOTPRequest, BiometricLoginRequest
+)
+from app.services.otp_service import otp_service
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -189,3 +193,133 @@ async def logout(request: RefreshTokenRequest, db: AsyncSession = Depends(get_db
         await db.commit()
     
     return {"message": "Successfully logged out"}
+
+
+# ================================
+# OTP-Based Authentication Endpoints
+# ================================
+
+@router.post("/send-otp", response_model=SendOTPResponse)
+async def send_otp(request: SendOTPRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Send OTP to user's phone number.
+    
+    Used for OTP-based login flow. User must be registered first.
+    """
+    return await otp_service.send_otp(db, request.phone)
+
+
+@router.post("/verify-otp", response_model=TokenResponse)
+async def verify_otp(request: VerifyOTPRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Verify OTP and issue JWT tokens.
+    
+    Verifies the OTP sent to user's phone and returns access/refresh tokens.
+    """
+    # Verify OTP and get user
+    user = await otp_service.verify_otp_and_login(
+        db=db,
+        phone=request.phone,
+        otp=request.otp,
+        device_info=request.device_info
+    )
+    
+    # Generate tokens
+    access_token = create_access_token({"sub": str(user.id), "role": user.role.value})
+    refresh_token_str = create_refresh_token({"sub": str(user.id)})
+    
+    # Store refresh token
+    refresh_token = RefreshToken(
+        user_id=user.id,
+        token=refresh_token_str,
+        expires_at=datetime.utcnow() + timedelta(days=7)
+    )
+    db.add(refresh_token)
+    await db.commit()
+    
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token_str,
+        user=UserResponse.from_orm(user)
+    )
+
+
+@router.post("/resend-otp", response_model=SendOTPResponse)
+async def resend_otp(request: SendOTPRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Resend OTP to user's phone number.
+    
+    Can be used if the previous OTP was not received or expired.
+    """
+    return await otp_service.resend_otp(db, request.phone)
+
+
+@router.post("/biometric-login", response_model=TokenResponse)
+async def biometric_login(request: BiometricLoginRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Login using biometric authentication.
+    
+    This endpoint is used after initial OTP login. The app stores an encrypted
+    biometric token on the device, which is sent here for verification.
+    
+    Note: The biometric_token should be the user_id encrypted on the device.
+    In production, implement proper token encryption/decryption.
+    """
+    try:
+        # In a real implementation, decrypt and validate the biometric token
+        # For now, we'll treat it as a user_id
+        # TODO: Implement proper biometric token encryption/decryption
+        user_id = request.biometric_token
+        
+        # Get user
+        result = await db.execute(
+            select(User).where(User.id == user_id, User.is_deleted == False)
+        )
+        user = result.scalar_one_or_none()
+        
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid biometric token"
+            )
+        
+        # Verify device matches (optional security check)
+        if user.last_device_info:
+            stored_device_id = user.last_device_info.get('device_id')
+            if stored_device_id and stored_device_id != request.device_id:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Device mismatch. Please login with OTP."
+                )
+        
+        # Update last login and device info
+        user.last_login = datetime.utcnow()
+        if request.device_info:
+            user.last_device_info = request.device_info
+        
+        # Generate tokens
+        access_token = create_access_token({"sub": str(user.id), "role": user.role.value})
+        refresh_token_str = create_refresh_token({"sub": str(user.id)})
+        
+        # Store refresh token
+        refresh_token = RefreshToken(
+            user_id=user.id,
+            token=refresh_token_str,
+            expires_at=datetime.utcnow() + timedelta(days=7)
+        )
+        db.add(refresh_token)
+        await db.commit()
+        await db.refresh(user)
+        
+        return TokenResponse(
+            access_token=access_token,
+            refresh_token=refresh_token_str,
+            user=UserResponse.from_orm(user)
+        )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid biometric token"
+        )
+

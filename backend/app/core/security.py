@@ -4,6 +4,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import HTTPException, status
 from app.core.config import settings
+from app.models.user import UserRole
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -19,14 +20,45 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
+def get_session_timeout(role: str) -> int:
+    """
+    Get session timeout in minutes based on user role.
+    
+    Args:
+        role: User role (doctor, patient, admin, etc.)
+        
+    Returns:
+        int: Session timeout in minutes
+    """
+    if role == UserRole.DOCTOR.value:
+        return settings.DOCTOR_SESSION_TIMEOUT_MINUTES
+    elif role == UserRole.PATIENT.value:
+        return settings.PATIENT_SESSION_TIMEOUT_MINUTES
+    else:
+        # Admin and other roles use doctor timeout (shorter for security)
+        return settings.DOCTOR_SESSION_TIMEOUT_MINUTES
+
+
 def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
-    """Create JWT access token."""
+    """
+    Create JWT access token with role-based expiration.
+    
+    Args:
+        data: Token payload data (should include 'role' for session timeout)
+        expires_delta: Optional custom expiration time
+        
+    Returns:
+        str: Encoded JWT token
+    """
     to_encode = data.copy()
     
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        # Use role-based session timeout if role is provided
+        role = data.get("role", UserRole.PATIENT.value)
+        timeout_minutes = get_session_timeout(role)
+        expire = datetime.utcnow() + timedelta(minutes=timeout_minutes)
     
     to_encode.update({"exp": expire, "type": "access"})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)

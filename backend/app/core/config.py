@@ -48,6 +48,32 @@ class Settings(BaseSettings):
     TWILIO_AUTH_TOKEN: str = ""
     TWILIO_PHONE_NUMBER: str = ""
 
+    # OTP Settings
+    OTP_LENGTH: int = 6
+    OTP_EXPIRY_MINUTES: int = 5
+    OTP_MAX_ATTEMPTS: int = 5
+    OTP_LOCKOUT_MINUTES: int = 30
+
+    # Google Gemini AI
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-pro"
+
+    # Firebase (Push Notifications)
+    FIREBASE_CREDENTIALS_PATH: str = "./firebase-credentials.json"
+
+    # WhatsApp Business API
+    WHATSAPP_API_TOKEN: str = ""
+    WHATSAPP_PHONE_NUMBER_ID: str = ""
+
+    # ABDM (Ayushman Bharat Digital Mission)
+    ABDM_CLIENT_ID: str = ""
+    ABDM_CLIENT_SECRET: str = ""
+    ABDM_BASE_URL: str = "https://dev.abdm.gov.in/gateway"
+
+    # Session Timeouts
+    DOCTOR_SESSION_TIMEOUT_MINUTES: int = 10
+    PATIENT_SESSION_TIMEOUT_MINUTES: int = 30
+
     # File Upload
     MAX_FILE_SIZE_MB: int = 10
     ALLOWED_FILE_TYPES: List[str] = ["pdf", "jpg", "jpeg", "png"]
@@ -77,6 +103,8 @@ class Settings(BaseSettings):
     PASSWORD_REQUIRE_LOWERCASE: bool = True
     PASSWORD_REQUIRE_DIGIT: bool = True
     PASSWORD_REQUIRE_SPECIAL: bool = True
+    ENCRYPTION_KEY: str = ""  # AES-256 key for at-rest encryption
+    SIGNATURE_PIN_SALT: str = ""  # Salt for signature PIN hashing
 
     # Appointment
     APPOINTMENT_SLOT_DURATION_MINUTES: int = 30

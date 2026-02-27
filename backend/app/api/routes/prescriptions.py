@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import List, Optional
@@ -14,9 +15,11 @@ from app.models.doctor import Doctor
 from app.schemas.prescription import (
     ConsultationCreate, ConsultationResponse,
     PrescriptionCreate, PrescriptionResponse, PrescriptionUpdate,
-    MedicineResponse
+    MedicineResponse, PrescriptionSignRequest, PrescriptionSignResponse,
+    PrescriptionSearchQuery, PrescriptionListResponse, ActivePrescriptionResponse
 )
 from app.api.dependencies import get_current_user
+from app.services.prescription_service import prescription_service
 import json
 
 router = APIRouter(prefix="/prescriptions", tags=["Prescriptions"])
@@ -152,6 +155,10 @@ async def create_prescription(
         prescription_date=today,
         notes=prescription_data.notes,
         special_instructions=prescription_data.special_instructions,
+        patient_instructions=prescription_data.patient_instructions,
+        follow_up_date=prescription_data.follow_up_date,
+        diagnosis_icd10_code=prescription_data.diagnosis_icd10_code,
+        diagnosis_patient_friendly=prescription_data.diagnosis_patient_friendly,
         version=1
     )
     
@@ -382,3 +389,207 @@ async def get_prescription_history(
         }
         for h in history
     ]
+
+
+# ================================
+# Sprint 1.1: Prescription Enhancements
+# ================================
+
+@router.post("/{prescription_id}/sign", response_model=PrescriptionSignResponse)
+async def sign_prescription(
+    prescription_id: UUID,
+    sign_request: PrescriptionSignRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Sign a prescription with doctor's digital signature (Doctor only).
+    
+    Requires:
+    - Prescription must belong to the doctor
+    - Doctor must have set up digital signature
+    - Correct signature PIN
+    
+    After signing:
+    - Prescription becomes locked (immutable)
+    - PDF is automatically generated
+    - Signature record is created
+    """
+    if current_user.role != UserRole.DOCTOR:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only doctors can sign prescriptions"
+        )
+    
+    # Get doctor
+    result = await db.execute(
+        select(Doctor).where(Doctor.user_id == current_user.id)
+    )
+    doctor = result.scalar_one_or_none()
+    if not doctor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Doctor profile not found"
+        )
+    
+    # Sign prescription
+    result = await prescription_service.sign_prescription(
+        db=db,
+        prescription_id=prescription_id,
+        doctor_id=doctor.id,
+        signature_pin=sign_request.signature_pin,
+        generate_pdf=True
+    )
+    
+    return PrescriptionSignResponse(**result)
+
+
+@router.get("/{prescription_id}/pdf")
+async def get_prescription_pdf(
+    prescription_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Download prescription PDF.
+    
+    - Doctor: Can download own prescriptions
+    - Patient: Can download own prescriptions
+    - Prescription must be signed before PDF is available
+    """
+    # Get PDF path
+    pdf_path = await prescription_service.get_prescription_pdf(
+        db=db,
+        prescription_id=prescription_id,
+        user_id=current_user.id,
+        user_role=current_user.role.value
+    )
+    
+    # Return file
+    import os
+    if not os.path.exists(pdf_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="PDF file not found"
+        )
+    
+    return FileResponse(
+        path=pdf_path,
+        media_type='application/pdf',
+        filename=f"prescription_{prescription_id}.pdf"
+    )
+
+
+@router.post("/search", response_model=PrescriptionListResponse)
+async def search_prescriptions(
+    search_query: PrescriptionSearchQuery,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Search prescriptions with filters.
+    
+    Filters:
+    - patient_id: Filter by patient
+    - doctor_id: Filter by doctor
+    - medicine_name: Partial match on medicine name
+    - diagnosis: Partial match on diagnosis
+    - date_from: Start date
+    - date_to: End date
+    - is_signed: Signed status
+    
+    Patients can only search their own prescriptions.
+    Doctors can search all their prescriptions.
+    """
+    # Apply role-based filters
+    if current_user.role == UserRole.PATIENT:
+        result = await db.execute(
+            select(Patient).where(Patient.user_id == current_user.id)
+        )
+        patient = result.scalar_one_or_none()
+        if not patient:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Patient profile not found"
+            )
+        search_query.patient_id = patient.id
+    elif current_user.role == UserRole.DOCTOR:
+        result = await db.execute(
+            select(Doctor).where(Doctor.user_id == current_user.id)
+        )
+        doctor = result.scalar_one_or_none()
+        if not doctor:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Doctor profile not found"
+            )
+        # If not specified, default to doctor's own prescriptions
+        if not search_query.doctor_id:
+            search_query.doctor_id = doctor.id
+    
+    # Search
+    result = await prescription_service.search_prescriptions(
+        db=db,
+        patient_id=search_query.patient_id,
+        doctor_id=search_query.doctor_id,
+        medicine_name=search_query.medicine_name,
+        diagnosis=search_query.diagnosis,
+        date_from=search_query.date_from,
+        date_to=search_query.date_to,
+        is_signed=search_query.is_signed,
+        page=page,
+        page_size=page_size
+    )
+    
+    # Load medicines for each prescription
+    for prescription in result["prescriptions"]:
+        result_meds = await db.execute(
+            select(PrescriptionMedicine).where(
+                PrescriptionMedicine.prescription_id == prescription.id
+            )
+        )
+        prescription.medicines = result_meds.scalars().all()
+    
+    return PrescriptionListResponse(**result)
+
+
+@router.get("/active", response_model=List[ActivePrescriptionResponse])
+async def get_active_prescriptions(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get patient's currently active prescriptions.
+    
+    Returns prescriptions where medicines are not yet completed
+    (based on prescription date + duration).
+    
+    Patient only endpoint.
+    """
+    if current_user.role != UserRole.PATIENT:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only patients can view active prescriptions"
+        )
+    
+    # Get patient
+    result = await db.execute(
+        select(Patient).where(Patient.user_id == current_user.id)
+    )
+    patient = result.scalar_one_or_none()
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient profile not found"
+        )
+    
+    # Get active prescriptions
+    active_prescriptions = await prescription_service.get_active_prescriptions(
+        db=db,
+        patient_id=patient.id
+    )
+    
+    return active_prescriptions
+
