@@ -20,7 +20,7 @@ class UserLogin(BaseModel):
 
 
 class UserResponse(UserBase):
-    id: UUID
+    id: int
     role: UserRole
     is_active: bool
     is_verified: bool

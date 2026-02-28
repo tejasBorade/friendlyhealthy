@@ -1,0 +1,95 @@
+﻿
+============================================================
+  FRIENDLYHEALTHY API TEST SUITE
+============================================================
+
+============================================================
+  TESTING LOGIN
+============================================================
+[PASS] Login successful
+  User ID: None
+
+============================================================
+  TESTING APPOINTMENTS
+============================================================
+[FAIL] GET /appointments: 500
+      Response: {"success":false,"error":{"code":"INTERNAL_ERROR","message":"'male' is not among the defined enum va
+[FAIL] GET /appointments/upcoming: 422
+      Response: {"success":false,"error":{"code":"VALIDATION_ERROR","message":"Validation failed","details":[{"type"
+
+============================================================
+  TESTING PRESCRIPTIONS
+============================================================
+[FAIL] GET /prescriptions: 500
+      Response: {"success":false,"error":{"code":"INTERNAL_ERROR","message":"'male' is not among the defined enum va
+[FAIL] GET /prescriptions/active: 422
+      Response: {"success":false,"error":{"code":"VALIDATION_ERROR","message":"Validation failed","details":[{"type"
+
+============================================================
+  TESTING MEDICAL RECORDS
+============================================================
+[FAIL] GET /medical-history: 405
+      Response: {"detail":"Method Not Allowed"}
+
+============================================================
+  TESTING REPORTS
+============================================================
+[FAIL] GET /reports: 500
+      Response: {"success":false,"error":{"code":"INTERNAL_ERROR","message":"'male' is not among the defined enum va
+
+============================================================
+  TESTING DOCTORS
+============================================================
+[FAIL] GET /doctors: 404
+      Response: {"detail":"Not Found"}
+[FAIL] GET /doctors/specializations: 500
+      Response: {"success":false,"error":{"code":"INTERNAL_ERROR","message":"(sqlalchemy.dialects.postgresql.asyncpg
+
+============================================================
+  TESTING DIGITAL SIGNATURES
+============================================================
+[FAIL] GET /signatures: 404
+      Response: {"detail":"Not Found"}
+
+============================================================
+  TESTING NOTIFICATIONS
+============================================================
+[FAIL] GET /notifications: 500
+      Response: {"success":false,"error":{"code":"INTERNAL_ERROR","message":"(sqlalchemy.dialects.postgresql.asyncpg
+[FAIL] GET /notifications/unread-count: 500
+      Response: {"success":false,"error":{"code":"INTERNAL_ERROR","message":"type object 'Notification' has no attri
+[FAIL] GET /notification-preferences: 500
+      Response: {"success":false,"error":{"code":"INTERNAL_ERROR","message":"(sqlalchemy.dialects.postgresql.asyncpg
+
+============================================================
+  TESTING TEMPLATES (Sprint 1.2)
+============================================================
+[FAIL] GET /templates: 403
+      Response: {"detail":"Only doctors can view templates"}
+
+============================================================
+  TESTING FAVORITES (Sprint 1.2)
+============================================================
+[FAIL] GET /favorites: 403
+      Response: {"detail":"Only doctors can view favorites"}
+
+============================================================
+  TESTING TEST ORDERS (Sprint 1.4)
+============================================================
+[FAIL] GET /tests: 404
+      Response: {"detail":"Not Found"}
+
+============================================================
+  TESTING REMINDERS (Sprint 2.1)
+============================================================
+[FAIL] GET /reminders: 404
+      Response: {"detail":"Not Found"}
+
+============================================================
+  TEST SUMMARY
+============================================================
+  Total Tests: 16
+  [PASS] Passed: 0 (0%)
+  [FAIL] Failed: 16 (100%)
+============================================================
+

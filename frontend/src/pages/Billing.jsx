@@ -20,6 +20,7 @@ import {
 } from '@mui/icons-material';
 import api from '../services/api';
 import { useSelector } from 'react-redux';
+import PatientSidebar from '../components/PatientSidebar';
 import AdminSidebar from '../components/AdminSidebar';
 
 const Billing = () => {
@@ -407,6 +408,17 @@ const Billing = () => {
     return (
       <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
         <AdminSidebar activeItem="Billing" />
+        <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
+          {pageContent}
+        </Box>
+      </Box>
+    );
+  }
+
+  if (user?.role === 'patient') {
+    return (
+      <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
+        <PatientSidebar activeItem="Billing" />
         <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
           {pageContent}
         </Box>

@@ -70,3 +70,16 @@ class ChargeTypeResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+class BillingSummary(BaseModel):
+    total_bills: int
+    total_amount: Decimal
+    paid_amount: Decimal
+    pending_amount: Decimal
+    overdue_amount: Decimal
+
+
+class BillsListResponse(BaseModel):
+    bills: List[BillResponse]
+    summary: BillingSummary

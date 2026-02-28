@@ -4,7 +4,7 @@ from sqlalchemy import select
 from typing import List, Optional
 from uuid import UUID
 from app.core.database import get_db
-from app.models.medical import PatientMedicalHistory
+from app.models.medical import MedicalRecord
 from app.models.user import User, UserRole
 from app.models.patient import Patient
 from app.models.doctor import Doctor

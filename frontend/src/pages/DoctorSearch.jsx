@@ -24,6 +24,7 @@ import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import { useSelector } from 'react-redux';
 import api from '../services/api';
 import { toast } from 'react-toastify';
+import PatientSidebar from '../components/PatientSidebar';
 import AdminSidebar from '../components/AdminSidebar';
 
 const specializations = [
@@ -562,6 +563,17 @@ const DoctorSearch = () => {
     return (
       <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
         <AdminSidebar activeItem="Doctors" />
+        <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
+          {pageContent}
+        </Box>
+      </Box>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
+        <PatientSidebar activeItem="Find Doctors" />
         <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
           {pageContent}
         </Box>

@@ -1,7 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import date
-from uuid import UUID
 from app.models.patient import Gender
 
 
@@ -9,7 +8,7 @@ class PatientBase(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=100)
     last_name: str = Field(..., min_length=1, max_length=100)
     date_of_birth: date
-    gender: Gender
+    gender: str  # Accept string, validate against Gender enum values
     phone: str = Field(..., min_length=10, max_length=20)
     alternate_phone: Optional[str] = None
     address: Optional[str] = None
@@ -41,8 +40,8 @@ class PatientUpdate(BaseModel):
 
 
 class PatientResponse(PatientBase):
-    id: UUID
-    user_id: UUID
+    id: int
+    user_id: int
     profile_picture: Optional[str] = None
     
     class Config:

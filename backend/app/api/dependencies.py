@@ -25,6 +25,15 @@ async def get_current_user(
             detail="Invalid authentication credentials"
         )
     
+    # Convert user_id to integer (JWT stores it as string)
+    try:
+        user_id = int(user_id)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid user ID format"
+        )
+    
     result = await db.execute(
         select(User).where(User.id == user_id, User.is_deleted == False)
     )

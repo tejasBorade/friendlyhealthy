@@ -1,45 +1,46 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from typing import List
-from uuid import UUID
+from pydantic import BaseModel, Field
 from datetime import datetime
 from app.core.database import get_db
-from app.models.notification import Notification, NotificationType, NotificationPriority
-from app.models.user import User
-from app.schemas.notification import NotificationCreate, NotificationResponse
+from app.models.notification import Notification
+from app.models.user import User, UserRole
 from app.api.dependencies import get_current_user
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
 
-@router.post("", response_model=NotificationResponse, status_code=status.HTTP_201_CREATED)
-async def create_notification(
-    notification_data: NotificationCreate,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """Create a notification (System/Admin use)."""
-    notification = Notification(
-        user_id=notification_data.user_id,
-        notification_type=notification_data.notification_type,
-        title=notification_data.title,
-        message=notification_data.message,
-        priority=notification_data.priority,
-        related_entity_type=notification_data.related_entity_type,
-        related_entity_id=notification_data.related_entity_id
-    )
+class NotificationBase(BaseModel):
+    user_id: int
+    notification_type: str = Field(..., max_length=50)
+    title: str = Field(..., max_length=200)
+    message: str
+    priority: str | None = Field(None, max_length=20)
+    send_via: str | None = Field(None, max_length=20)
+
+
+class NotificationCreate(NotificationBase):
+    pass
+
+
+class NotificationResponse(NotificationBase):
+    id: int
+    is_read: bool
+    created_at: datetime
     
-    db.add(notification)
-    await db.commit()
-    await db.refresh(notification)
-    
-    return notification
+    class Config:
+        from_attributes = True
+
+
+class UnreadCountResponse(BaseModel):
+    count: int
 
 
 @router.get("", response_model=List[NotificationResponse])
 async def get_notifications(
-    is_read: bool = None,
+    is_read: bool | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
@@ -51,7 +52,7 @@ async def get_notifications(
     if is_read is not None:
         query = query.where(Notification.is_read == is_read)
     
-    query = query.order_by(Notification.created_at.desc()).offset(skip).limit(limit)
+    query = query.offset(skip).limit(limit).order_by(Notification.created_at.desc())
     
     result = await db.execute(query)
     notifications = result.scalars().all()
@@ -59,28 +60,26 @@ async def get_notifications(
     return notifications
 
 
-@router.get("/unread-count")
+@router.get("/unread-count", response_model=UnreadCountResponse)
 async def get_unread_count(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Get count of unread notifications."""
-    from sqlalchemy import func
-    
     result = await db.execute(
-        select(func.count(Notification.id)).where(
+        select(func.count()).select_from(Notification).where(
             Notification.user_id == current_user.id,
             Notification.is_read == False
         )
     )
     count = result.scalar()
     
-    return {"unread_count": count}
+    return {"count": count}
 
 
-@router.patch("/{notification_id}/read", response_model=NotificationResponse)
-async def mark_notification_read(
-    notification_id: UUID,
+@router.patch("/{notification_id}/read")
+async def mark_as_read(
+    notification_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -100,60 +99,27 @@ async def mark_notification_read(
         )
     
     notification.is_read = True
-    notification.read_at = datetime.utcnow()
+    await db.commit()
     
+    return {"message": "Notification marked as read"}
+
+
+@router.post("", response_model=NotificationResponse, status_code=status.HTTP_201_CREATED)
+async def create_notification(
+    notification_data: NotificationCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Create a notification (Admin/System only)."""
+    if current_user.role not in [UserRole.ADMIN, UserRole.STAFF]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions"
+        )
+    
+    notification = Notification(**notification_data.model_dump())
+    db.add(notification)
     await db.commit()
     await db.refresh(notification)
     
     return notification
-
-
-@router.patch("/mark-all-read")
-async def mark_all_notifications_read(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """Mark all notifications as read."""
-    result = await db.execute(
-        select(Notification).where(
-            Notification.user_id == current_user.id,
-            Notification.is_read == False
-        )
-    )
-    notifications = result.scalars().all()
-    
-    now = datetime.utcnow()
-    for notification in notifications:
-        notification.is_read = True
-        notification.read_at = now
-    
-    await db.commit()
-    
-    return {"message": f"Marked {len(notifications)} notifications as read"}
-
-
-@router.delete("/{notification_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_notification(
-    notification_id: UUID,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """Delete a notification."""
-    result = await db.execute(
-        select(Notification).where(
-            Notification.id == notification_id,
-            Notification.user_id == current_user.id
-        )
-    )
-    notification = result.scalar_one_or_none()
-    
-    if not notification:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Notification not found"
-        )
-    
-    await db.delete(notification)
-    await db.commit()
-    
-    return None

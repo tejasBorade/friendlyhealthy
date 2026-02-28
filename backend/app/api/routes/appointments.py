@@ -1,18 +1,22 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
-from typing import List
-from uuid import UUID
-from datetime import datetime, date
+from sqlalchemy import select, and_
+from typing import List, Optional
+from datetime import datetime, date, timedelta
+from pydantic import BaseModel
 from app.core.database import get_db
-from app.models.appointment import Appointment, AppointmentStatus
+from app.models.appointment import Appointment
 from app.models.user import User, UserRole
 from app.models.patient import Patient
 from app.models.doctor import Doctor
-from app.schemas.appointment import AppointmentCreate, AppointmentResponse, AppointmentStatusUpdate
+from app.schemas.appointment import AppointmentCreate, AppointmentResponse
 from app.api.dependencies import get_current_user
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
+
+
+class AppointmentsListResponse(BaseModel):
+    appointments: List[AppointmentResponse]
 
 
 @router.post("", response_model=AppointmentResponse, status_code=status.HTTP_201_CREATED)
@@ -34,7 +38,7 @@ async def create_appointment(
             detail="Patient profile not found"
         )
     
-    # Verify doctor exists
+   # Verify doctor exists
     result = await db.execute(
         select(Doctor).where(Doctor.id == appointment_data.doctor_id)
     )
@@ -46,26 +50,14 @@ async def create_appointment(
             detail="Doctor not found"
         )
     
-    # Generate appointment number
-    today = date.today()
-    result = await db.execute(
-        select(func.count(Appointment.id)).where(
-            func.date(Appointment.created_at) == today
-        )
-    )
-    count = result.scalar() or 0
-    appointment_number = f"APT{today.strftime('%Y%m%d')}{str(count + 1).zfill(4)}"
-    
     # Create appointment
     appointment = Appointment(
-        appointment_number=appointment_number,
         patient_id=patient.id,
         doctor_id=appointment_data.doctor_id,
         appointment_date=appointment_data.appointment_date,
         appointment_time=appointment_data.appointment_time,
-        reason_for_visit=appointment_data.reason_for_visit,
-        symptoms=appointment_data.symptoms,
-        status=AppointmentStatus.BOOKED
+        reason=appointment_data.reason,
+        status='scheduled'
     )
     
     db.add(appointment)
@@ -75,9 +67,9 @@ async def create_appointment(
     return appointment
 
 
-@router.get("", response_model=List[AppointmentResponse])
+@router.get("", response_model=AppointmentsListResponse)
 async def get_appointments(
-    status: Optional[AppointmentStatus] = None,
+    status: Optional[str] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
@@ -90,11 +82,57 @@ async def get_appointments(
         )
         patient = result.scalar_one_or_none()
         if not patient:
+            return {"appointments": []}
+        
+        query = select(Appointment).where(
+            Appointment.patient_id == patient.id
+        )
+    elif current_user.role == UserRole.DOCTOR:
+        result = await db.execute(
+            select(Doctor).where(Doctor.user_id == current_user.id)
+        )
+        doctor = result.scalar_one_or_none()
+        if not doctor:
+            return {"appointments": []}
+        
+        query = select(Appointment).where(
+            Appointment.doctor_id == doctor.id
+        )
+    else:
+        # Admin can see all
+        query = select(Appointment)
+    
+    if status:
+        query = query.where(Appointment.status == status)
+    
+    query = query.order_by(Appointment.appointment_date.desc()).offset(skip).limit(limit)
+    
+    result = await db.execute(query)
+    appointments = result.scalars().all()
+    
+    return {"appointments": appointments}
+
+
+@router.get("/upcoming", response_model=List[AppointmentResponse])
+async def get_upcoming_appointments(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get upcoming appointments (today and future)."""
+    today = date.today()
+    
+    if current_user.role == UserRole.PATIENT:
+        result = await db.execute(
+            select(Patient).where(Patient.user_id == current_user.id)
+        )
+        patient = result.scalar_one_or_none()
+        if not patient:
             return []
         
         query = select(Appointment).where(
             Appointment.patient_id == patient.id,
-            Appointment.is_deleted == False
+            Appointment.appointment_date >= today,
+            Appointment.status == 'scheduled'
         )
     elif current_user.role == UserRole.DOCTOR:
         result = await db.execute(
@@ -106,18 +144,16 @@ async def get_appointments(
         
         query = select(Appointment).where(
             Appointment.doctor_id == doctor.id,
-            Appointment.is_deleted == False
+            Appointment.appointment_date >= today,
+            Appointment.status == 'scheduled'
         )
     else:
-        # Admin can see all
-        query = select(Appointment).where(Appointment.is_deleted == False)
+        query = select(Appointment).where(
+            Appointment.appointment_date >= today,
+            Appointment.status == 'scheduled'
+        )
     
-    if status:
-        query = query.where(Appointment.status == status)
-    
-    query = query.order_by(Appointment.appointment_date.desc()).offset(skip).limit(limit)
-    
-    result = await db.execute(query)
+    result = await db.execute(query.order_by(Appointment.appointment_date.asc()))
     appointments = result.scalars().all()
     
     return appointments
@@ -125,16 +161,13 @@ async def get_appointments(
 
 @router.get("/{appointment_id}", response_model=AppointmentResponse)
 async def get_appointment(
-    appointment_id: UUID,
+    appointment_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Get appointment details."""
     result = await db.execute(
-        select(Appointment).where(
-            Appointment.id == appointment_id,
-            Appointment.is_deleted == False
-        )
+        select(Appointment).where(Appointment.id == appointment_id)
     )
     appointment = result.scalar_one_or_none()
     
@@ -149,17 +182,14 @@ async def get_appointment(
 
 @router.patch("/{appointment_id}/status", response_model=AppointmentResponse)
 async def update_appointment_status(
-    appointment_id: UUID,
-    status_update: AppointmentStatusUpdate,
+    appointment_id: int,
+    status: str,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Update appointment status."""
     result = await db.execute(
-        select(Appointment).where(
-            Appointment.id == appointment_id,
-            Appointment.is_deleted == False
-        )
+        select(Appointment).where(Appointment.id == appointment_id)
     )
     appointment = result.scalar_one_or_none()
     
@@ -169,13 +199,7 @@ async def update_appointment_status(
             detail="Appointment not found"
         )
     
-    appointment.status = status_update.status
-    if status_update.notes:
-        appointment.doctor_notes = status_update.notes
-    if status_update.cancellation_reason:
-        appointment.cancellation_reason = status_update.cancellation_reason
-        appointment.cancelled_by = current_user.id
-        appointment.cancelled_at = datetime.utcnow()
+    appointment.status = status
     
     await db.commit()
     await db.refresh(appointment)
@@ -185,17 +209,13 @@ async def update_appointment_status(
 
 @router.post("/{appointment_id}/cancel")
 async def cancel_appointment(
-    appointment_id: UUID,
-    reason: str,
+    appointment_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Cancel an appointment."""
     result = await db.execute(
-        select(Appointment).where(
-            Appointment.id == appointment_id,
-            Appointment.is_deleted == False
-        )
+        select(Appointment).where(Appointment.id == appointment_id)
     )
     appointment = result.scalar_one_or_none()
     
@@ -205,10 +225,7 @@ async def cancel_appointment(
             detail="Appointment not found"
         )
     
-    appointment.status = AppointmentStatus.CANCELLED
-    appointment.cancellation_reason = reason
-    appointment.cancelled_by = current_user.id
-    appointment.cancelled_at = datetime.utcnow()
+    appointment.status = 'cancelled'
     
     await db.commit()
     

@@ -1,43 +1,37 @@
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date, time
-from uuid import UUID
-from app.models.appointment import AppointmentStatus
 
 
 class AppointmentCreate(BaseModel):
-    doctor_id: UUID
+    doctor_id: int
     appointment_date: date
     appointment_time: time
-    reason_for_visit: Optional[str] = None
-    symptoms: Optional[str] = None
+    reason: Optional[str] = None
 
 
 class AppointmentUpdate(BaseModel):
     appointment_date: Optional[date] = None
     appointment_time: Optional[time] = None
-    reason_for_visit: Optional[str] = None
-    symptoms: Optional[str] = None
+    reason: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class AppointmentResponse(BaseModel):
-    id: UUID
-    appointment_number: str
-    patient_id: UUID
-    doctor_id: UUID
+    id: int
+    patient_id: int
+    doctor_id: int
     appointment_date: date
     appointment_time: time
-    duration: int
-    status: AppointmentStatus
-    reason_for_visit: Optional[str]
-    symptoms: Optional[str]
-    doctor_notes: Optional[str]
+    status: str
+    reason: Optional[str]
+    notes: Optional[str]
     
     class Config:
         from_attributes = True
 
 
 class AppointmentStatusUpdate(BaseModel):
-    status: AppointmentStatus
+    status: str
     notes: Optional[str] = None
     cancellation_reason: Optional[str] = None

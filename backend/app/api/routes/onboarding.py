@@ -13,7 +13,7 @@ from uuid import UUID
 from app.core.database import get_db
 from app.core.security import hash_password, create_access_token, create_refresh_token
 from app.models.user import User, UserRole, RefreshToken
-from app.models.patient import Patient, Gender
+from app.models.patient import Patient
 from app.models.doctor import Doctor
 from app.schemas.auth import TokenResponse, UserResponse
 from pydantic import BaseModel, Field, EmailStr, validator
@@ -35,7 +35,7 @@ class PatientStep2(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=100)
     last_name: str = Field(..., min_length=1, max_length=100)
     date_of_birth: date = Field(..., description="Date of birth")
-    gender: Gender
+    gender: str  # Accept string instead of Gender enum
     
     @validator('date_of_birth')
     def validate_dob(cls, v):

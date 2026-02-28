@@ -36,6 +36,7 @@ import { toast } from 'react-toastify';
 import { format } from 'date-fns';
 import AdminSidebar from '../components/AdminSidebar';
 import DoctorSidebar from '../components/DoctorSidebar';
+import PatientSidebar from '../components/PatientSidebar';
 
 const statusColors = {
   pending: 'primary',
@@ -230,6 +231,17 @@ const Appointments = () => {
       return (
         <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
           <DoctorSidebar activeItem="Appointments" />
+          <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
+            {loadingContent}
+          </Box>
+        </Box>
+      );
+    }
+
+    if (user?.role === 'patient') {
+      return (
+        <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
+          <PatientSidebar />
           <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
             {loadingContent}
           </Box>
@@ -489,6 +501,17 @@ const Appointments = () => {
     return (
       <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
         <DoctorSidebar activeItem="Appointments" />
+        <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
+          {pageContent}
+        </Box>
+      </Box>
+    );
+  }
+
+  if (user?.role === 'patient') {
+    return (
+      <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
+        <PatientSidebar />
         <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
           {pageContent}
         </Box>

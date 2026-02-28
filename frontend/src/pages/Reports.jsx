@@ -17,6 +17,7 @@ import {
 } from '@mui/icons-material';
 import api from '../services/api';
 import { useSelector } from 'react-redux';
+import PatientSidebar from '../components/PatientSidebar';
 import AdminSidebar from '../components/AdminSidebar';
 import DoctorSidebar from '../components/DoctorSidebar';
 
@@ -416,6 +417,17 @@ const Reports = () => {
     return (
       <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
         <DoctorSidebar activeItem="Reports" />
+        <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
+          {pageContent}
+        </Box>
+      </Box>
+    );
+  }
+
+  if (user?.role === 'patient') {
+    return (
+      <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
+        <PatientSidebar activeItem="Medical History" />
         <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
           {pageContent}
         </Box>

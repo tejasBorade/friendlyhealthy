@@ -269,18 +269,18 @@ celery -A app.services.celery_tasks.celery_app worker --loglevel=info
 
 ## 🔐 Test Credentials
 
-After registration, use these credentials:
+After seeding the database, use these credentials:
 
-**Doctor:**
-- Email: doctor@example.com
-- Password: Doctor@123
+**Patient (Working):**
+- Email: patient@test.com
+- Password: Test@123
 
-**Patient:**
-- Email: patient@example.com
-- Password: Patient@123
+**Doctor (Working):**
+- Email: doctor@test.com
+- Password: Test@123
 
-**Admin:**
-- Email: admin@example.com
+**Admin (Working):**
+- Email: admin@healthcare.com
 - Password: Admin@123
 
 ---

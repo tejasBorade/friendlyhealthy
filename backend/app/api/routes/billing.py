@@ -11,7 +11,8 @@ from app.models.billing import Bill, BillItem, ChargeType, PaymentStatus
 from app.models.user import User, UserRole
 from app.models.patient import Patient
 from app.schemas.billing import (
-    BillCreate, BillResponse, PaymentUpdate, ChargeTypeResponse
+    BillCreate, BillResponse, PaymentUpdate, ChargeTypeResponse,
+    BillsListResponse, BillingSummary
 )
 from app.api.dependencies import get_current_user
 
@@ -32,6 +33,92 @@ async def get_charge_types(
     charge_types = result.scalars().all()
     
     return charge_types
+
+
+@router.get("", response_model=BillsListResponse)
+async def get_bills_with_summary(
+    payment_status: Optional[PaymentStatus] = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get bills with summary information."""
+    from decimal import Decimal as D
+    from sqlalchemy.exc import ProgrammingError
+    
+    try:
+        query = select(Bill).where(Bill.is_deleted == False)
+        
+        # Filter based on user role
+        patient = None
+        if current_user.role == UserRole.PATIENT:
+            result = await db.execute(
+                select(Patient).where(Patient.user_id == current_user.id)
+            )
+            patient = result.scalar_one_or_none()
+            if patient:
+                query = query.where(Bill.patient_id == patient.id)
+            else:
+                return BillsListResponse(
+                    bills=[],
+                    summary=BillingSummary(
+                        total_bills=0,
+                        total_amount=D("0"),
+                        paid_amount=D("0"),
+                        pending_amount=D("0"),
+                        overdue_amount=D("0")
+                    )
+                )
+        
+        if payment_status:
+            query = query.where(Bill.payment_status == payment_status)
+        
+        # Get bills
+        paginated_query = query.order_by(Bill.bill_date.desc()).offset(skip).limit(limit)
+        result = await db.execute(paginated_query)
+        bills = result.scalars().all()
+        
+        # Load items for each bill
+        for bill in bills:
+            result = await db.execute(
+                select(BillItem).where(BillItem.bill_id == bill.id)
+            )
+            bill.items = result.scalars().all()
+        
+        # Calculate summary for all bills (not just paginated)
+        summary_query = query
+        result = await db.execute(summary_query)
+        all_bills = result.scalars().all()
+        
+        total_bills = len(all_bills)
+        total_amount = sum((bill.total_amount for bill in all_bills), D("0"))
+        paid_amount = sum((bill.total_amount for bill in all_bills if bill.payment_status == PaymentStatus.PAID), D("0"))
+        pending_amount = sum((bill.total_amount for bill in all_bills if bill.payment_status == PaymentStatus.PENDING), D("0"))
+        overdue_amount = sum((bill.total_amount for bill in all_bills if bill.payment_status == PaymentStatus.OVERDUE), D("0"))
+        
+        summary = BillingSummary(
+            total_bills=total_bills,
+            total_amount=total_amount,
+            paid_amount=paid_amount,
+            pending_amount=pending_amount,
+            overdue_amount=overdue_amount
+        )
+        
+        return BillsListResponse(bills=bills, summary=summary)
+    
+    except ProgrammingError:
+        # Table doesn't exist yet, return empty response
+        return BillsListResponse(
+            bills=[],
+            summary=BillingSummary(
+                total_bills=0,
+                total_amount=D("0"),
+                paid_amount=D("0"),
+                pending_amount=D("0"),
+                overdue_amount=D("0")
+            )
+        )
 
 
 @router.post("/bills", response_model=BillResponse, status_code=status.HTTP_201_CREATED)

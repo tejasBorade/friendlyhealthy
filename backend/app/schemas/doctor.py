@@ -1,56 +1,43 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional
 from decimal import Decimal
-from uuid import UUID
+from datetime import datetime
 
 
 class DoctorBase(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=100)
     last_name: str = Field(..., min_length=1, max_length=100)
-    gender: str
-    phone: str = Field(..., min_length=10, max_length=20)
-    registration_number: str
-    qualification: str
-    experience_years: int = Field(..., ge=0)
-    consultation_fee: Decimal = Field(..., ge=0)
-    about: Optional[str] = None
+    specialization: str = Field(..., max_length=100)
+    qualification: str | None = Field(None, max_length=255)
+    experience_years: int | None = Field(None, ge=0)
+    phone: str | None = Field(None, max_length=20)
+    consultation_fee: Decimal | None = Field(None, ge=0)
+    available_days: str | None = Field(None, max_length=255)
+    available_hours: str | None = Field(None, max_length=100)
 
 
 class DoctorCreate(DoctorBase):
-    specialization_ids: List[UUID]
-    clinic_name: str
-    clinic_address: str
-    clinic_city: str
-    clinic_state: str
+    user_id: int
 
 
 class DoctorUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    specialization: Optional[str] = None
     phone: Optional[str] = None
     qualification: Optional[str] = None
     experience_years: Optional[int] = None
     consultation_fee: Optional[Decimal] = None
-    about: Optional[str] = None
-
-
-class SpecializationResponse(BaseModel):
-    id: UUID
-    name: str
-    description: Optional[str]
-    icon: Optional[str]
-    
-    class Config:
-        from_attributes = True
+    available_days: Optional[str] = None
+    available_hours: Optional[str] = None
 
 
 class DoctorResponse(DoctorBase):
-    id: UUID
-    user_id: UUID
-    is_verified: bool
-    rating: Decimal
-    total_reviews: int
-    specializations: List[str] = []
+    id: int
+    user_id: int
+    is_available: bool
+    created_at: datetime
+    updated_at: datetime
     
     class Config:
         from_attributes = True

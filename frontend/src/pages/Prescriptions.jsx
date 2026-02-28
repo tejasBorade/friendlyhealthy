@@ -16,9 +16,14 @@ import {
   Download as DownloadIcon,
   LocalPharmacy as PharmacyIcon
 } from '@mui/icons-material';
+import { useSelector } from 'react-redux';
 import api from '../services/api';
+import PatientSidebar from '../components/PatientSidebar';
+import DoctorSidebar from '../components/DoctorSidebar';
+import AdminSidebar from '../components/AdminSidebar';
 
 const Prescriptions = () => {
+  const { user } = useSelector((state) => state.auth);
   const [prescriptions, setPrescriptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -47,9 +52,10 @@ const Prescriptions = () => {
     setDetailsLoading(true);
     try {
       const response = await api.get(`/prescriptions/${prescription.id}`);
-      setSelectedPrescription(response.data.prescription);
+      setSelectedPrescription(response.data);
     } catch (err) {
       console.error(err);
+      // Fallback to the prescription data we already have
       setSelectedPrescription(prescription);
     } finally {
       setDetailsLoading(false);
@@ -64,14 +70,38 @@ const Prescriptions = () => {
   };
 
   if (loading) {
-    return (
+    const loadingContent = (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
         <CircularProgress sx={{ color: '#10b981' }} />
       </Box>
     );
+
+    if (user?.role === 'patient') {
+      return (
+        <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
+          <PatientSidebar activeItem="Prescriptions" />
+          <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
+            {loadingContent}
+          </Box>
+        </Box>
+      );
+    }
+
+    if (user?.role === 'doctor') {
+      return (
+        <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
+          <DoctorSidebar activeItem="Prescriptions" />
+          <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
+            {loadingContent}
+          </Box>
+        </Box>
+      );
+    }
+
+    return loadingContent;
   }
 
-  return (
+  const pageContent = (
     <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 50%, #a7f3d0 100%)', py: 4 }}>
       <Container maxWidth="lg">
         {/* Header */}
@@ -319,6 +349,30 @@ const Prescriptions = () => {
       </Container>
     </Box>
   );
+
+  if (user?.role === 'patient') {
+    return (
+      <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
+        <PatientSidebar activeItem="Prescriptions" />
+        <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
+          {pageContent}
+        </Box>
+      </Box>
+    );
+  }
+
+  if (user?.role === 'doctor') {
+    return (
+      <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f9fafb' }}>
+        <DoctorSidebar activeItem="Prescriptions" />
+        <Box sx={{ ml: { xs: 0, md: '280px' }, flex: 1 }}>
+          {pageContent}
+        </Box>
+      </Box>
+    );
+  }
+
+  return pageContent;
 };
 
 export default Prescriptions;

@@ -1,7 +1,5 @@
-from sqlalchemy import Column, String, Date, Text, Boolean, DateTime, Enum as SQLEnum, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, Integer, Date, Text, Boolean, DateTime, Enum as SQLEnum, ForeignKey
 from sqlalchemy.sql import func
-import uuid
 import enum
 from app.core.database import Base
 
@@ -15,12 +13,12 @@ class Gender(str, enum.Enum):
 class Patient(Base):
     __tablename__ = "patients"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
     first_name = Column(String(100), nullable=False, index=True)
     last_name = Column(String(100), nullable=False, index=True)
     date_of_birth = Column(Date, nullable=False)
-    gender = Column(SQLEnum(Gender), nullable=False)
+    gender = Column(String(10), nullable=False)  # Stored as string, not SQLEnum
     phone = Column(String(20), nullable=False, index=True)
     alternate_phone = Column(String(20), nullable=True)
     address = Column(Text, nullable=True)
