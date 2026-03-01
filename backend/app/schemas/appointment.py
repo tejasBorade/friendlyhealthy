@@ -5,6 +5,7 @@ from datetime import date, time
 
 class AppointmentCreate(BaseModel):
     doctor_id: int
+    patient_id: Optional[int] = None  # For admin/doctor creating appointments for patients
     appointment_date: date
     appointment_time: time
     reason: Optional[str] = None

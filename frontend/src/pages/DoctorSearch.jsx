@@ -64,6 +64,7 @@ const DoctorSearch = () => {
   const [reason, setReason] = useState('');
   const [patientId, setPatientId] = useState(null);
   const [manualPatientId, setManualPatientId] = useState('');
+  const [patients, setPatients] = useState([]);
   
   const { user } = useSelector((state) => state.auth);
   const isAdmin = user?.role === 'admin';
@@ -72,6 +73,8 @@ const DoctorSearch = () => {
     fetchDoctors();
     if (user?.role === 'patient') {
       fetchPatientId();
+    } else if (user?.role === 'admin' || user?.role === 'doctor') {
+      fetchPatients();
     }
   }, []);
 
@@ -89,6 +92,15 @@ const DoctorSearch = () => {
       toast.error('Failed to load doctors');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPatients = async () => {
+    try {
+      const response = await api.get('/patients');
+      setPatients(response.data.patients || []);
+    } catch (error) {
+      console.error('Error fetching patients:', error);
     }
   };
 
@@ -135,7 +147,7 @@ const DoctorSearch = () => {
       return;
     }
 
-    const bookingPatientId = user?.role === 'patient' ? patientId : manualPatientId.trim();
+    const bookingPatientId = user?.role === 'patient' ? patientId : manualPatientId;
 
     if (!bookingPatientId) {
       toast.error(
@@ -150,20 +162,26 @@ const DoctorSearch = () => {
       const formattedDate = appointmentDate.toISOString().split('T')[0];
       const formattedTime = appointmentTime.toTimeString().split(' ')[0].substring(0, 5);
 
-      await api.post('/appointments', {
-        patientId: bookingPatientId,
-        doctorId: selectedDoctor.id,
-        appointmentDate: formattedDate,
-        appointmentTime: formattedTime,
+      const appointmentData = {
+        doctor_id: selectedDoctor.id,
+        appointment_date: formattedDate,
+        appointment_time: formattedTime,
         reason,
-      });
+      };
+
+      // Include patient_id for admin/doctor users
+      if (user?.role === 'admin' || user?.role === 'doctor') {
+        appointmentData.patient_id = parseInt(bookingPatientId, 10);
+      }
+
+      await api.post('/appointments', appointmentData);
 
       toast.success('Appointment booked successfully!');
       setBookingDialog(false);
       setSelectedDoctor(null);
     } catch (error) {
       console.error('Booking error:', error);
-      toast.error(error.response?.data?.message || 'Failed to book appointment');
+      toast.error(error.response?.data?.detail || error.response?.data?.message || 'Failed to book appointment');
     }
   };
 
@@ -503,18 +521,23 @@ const DoctorSearch = () => {
 
             {user?.role !== 'patient' && (
               <TextField
+                select
                 fullWidth
-                type="text"
-                label="Patient ID"
+                label="Select Patient"
                 value={manualPatientId}
                 onChange={(e) => setManualPatientId(e.target.value)}
-                placeholder="Enter patient ID (example: pat-001)"
-                helperText="Use patient ID format from your records (for example: pat-001)"
+                helperText="Select a patient for the appointment"
                 sx={{
                   mb: 3,
                   '& .MuiOutlinedInput-root': { borderRadius: 3 },
                 }}
-              />
+              >
+                {patients.map((patient) => (
+                  <MenuItem key={patient.id} value={patient.id}>
+                    {patient.first_name} {patient.last_name} - ID: {patient.id}
+                  </MenuItem>
+                ))}
+              </TextField>
             )}
 
             <TextField

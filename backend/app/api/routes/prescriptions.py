@@ -13,6 +13,7 @@ from app.schemas.prescription import (
     MedicalRecordCreate, MedicalRecordResponse, MedicalRecordUpdate
 )
 from app.api.dependencies import get_current_user
+from app.services.celery_tasks import send_prescription_notification_email
 
 router = APIRouter(tags=["Prescriptions"])
 
@@ -167,6 +168,39 @@ async def create_prescription(
     db.add(prescription)
     await db.commit()
     await db.refresh(prescription)
+    
+    # Send email notification to patient
+    try:
+        # Get patient details
+        patient_result = await db.execute(
+            select(Patient).where(Patient.id == prescription.patient_id)
+        )
+        patient = patient_result.scalar_one_or_none()
+        
+        # Get patient user for email
+        if patient:
+            patient_user_result = await db.execute(
+                select(User).where(User.id == patient.user_id)
+            )
+            patient_user = patient_user_result.scalar_one_or_none()
+            
+            if patient_user:
+                # Count medicines (if prescription has medicines field)
+                medicines_count = len(prescription.medicines) if hasattr(prescription, 'medicines') and prescription.medicines else 0
+                
+                # Send async email notification
+                send_prescription_notification_email.delay(
+                    patient_email=patient_user.email,
+                    patient_name=patient.full_name,
+                    doctor_name=doctor.full_name,
+                    prescription_date=prescription.prescribed_date.isoformat(),
+                    prescription_id=prescription.id,
+                    medicines_count=medicines_count
+                )
+    except Exception as e:
+        # Log error but don't fail the prescription creation
+        print(f"Failed to send prescription notification email: {str(e)}")
+    
     return prescription
 
 

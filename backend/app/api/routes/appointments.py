@@ -9,8 +9,9 @@ from app.models.appointment import Appointment
 from app.models.user import User, UserRole
 from app.models.patient import Patient
 from app.models.doctor import Doctor
-from app.schemas.appointment import AppointmentCreate, AppointmentResponse
+from app.schemas.appointment import AppointmentCreate, AppointmentResponse, AppointmentStatusUpdate
 from app.api.dependencies import get_current_user
+from app.services.celery_tasks import send_appointment_booking_email, send_appointment_status_email
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
@@ -26,17 +27,32 @@ async def create_appointment(
     db: AsyncSession = Depends(get_db)
 ):
     """Create a new appointment."""
-    # Get patient
-    result = await db.execute(
-        select(Patient).where(Patient.user_id == current_user.id)
-    )
-    patient = result.scalar_one_or_none()
-    
-    if not patient:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Patient profile not found"
+    # Determine patient_id
+    if appointment_data.patient_id and current_user.role in [UserRole.ADMIN, UserRole.DOCTOR]:
+        # Admin/Doctor creating appointment for a patient
+        patient_id = appointment_data.patient_id
+        result = await db.execute(
+            select(Patient).where(Patient.id == patient_id)
         )
+        patient = result.scalar_one_or_none()
+        if not patient:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Patient not found"
+            )
+    else:
+        # Patient creating their own appointment
+        result = await db.execute(
+            select(Patient).where(Patient.user_id == current_user.id)
+        )
+        patient = result.scalar_one_or_none()
+        
+        if not patient:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Patient profile not found"
+            )
+        patient_id = patient.id
     
    # Verify doctor exists
     result = await db.execute(
@@ -52,17 +68,45 @@ async def create_appointment(
     
     # Create appointment
     appointment = Appointment(
-        patient_id=patient.id,
+        patient_id=patient_id,
         doctor_id=appointment_data.doctor_id,
         appointment_date=appointment_data.appointment_date,
         appointment_time=appointment_data.appointment_time,
         reason=appointment_data.reason,
-        status='scheduled'
+        status='booked'
     )
     
     db.add(appointment)
     await db.commit()
     await db.refresh(appointment)
+    
+    # Send email notification
+    try:
+        # Get patient user details
+        patient_user_result = await db.execute(
+            select(User).where(User.id == patient.user_id)
+        )
+        patient_user = patient_user_result.scalar_one_or_none()
+        
+        # Get doctor user details
+        doctor_user_result = await db.execute(
+            select(User).where(User.id == doctor.user_id)
+        )
+        doctor_user = doctor_user_result.scalar_one_or_none()
+        
+        if patient_user and doctor_user:
+            # Send async email notification
+            send_appointment_booking_email.delay(
+                patient_email=patient_user.email,
+                patient_name=patient.full_name,
+                doctor_name=doctor.full_name,
+                appointment_date=appointment.appointment_date.isoformat(),
+                appointment_time=str(appointment.appointment_time),
+                appointment_id=appointment.id
+            )
+    except Exception as e:
+        # Log error but don't fail the appointment creation
+        print(f"Failed to send appointment booking email: {str(e)}")
     
     return appointment
 
@@ -183,7 +227,7 @@ async def get_appointment(
 @router.patch("/{appointment_id}/status", response_model=AppointmentResponse)
 async def update_appointment_status(
     appointment_id: int,
-    status: str,
+    status_update: AppointmentStatusUpdate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -199,10 +243,47 @@ async def update_appointment_status(
             detail="Appointment not found"
         )
     
-    appointment.status = status
+    appointment.status = status_update.status
+    if status_update.notes:
+        appointment.notes = status_update.notes
     
     await db.commit()
     await db.refresh(appointment)
+    
+    # Send email notification for status update
+    try:
+        # Get patient details
+        patient_result = await db.execute(
+            select(Patient).where(Patient.id == appointment.patient_id)
+        )
+        patient = patient_result.scalar_one_or_none()
+        
+        # Get patient user
+        patient_user_result = await db.execute(
+            select(User).where(User.id == patient.user_id)
+        )
+        patient_user = patient_user_result.scalar_one_or_none()
+        
+        # Get doctor details
+        doctor_result = await db.execute(
+            select(Doctor).where(Doctor.id == appointment.doctor_id)
+        )
+        doctor = doctor_result.scalar_one_or_none()
+        
+        if patient_user and patient and doctor:
+            # Send async email notification
+            send_appointment_status_email.delay(
+                patient_email=patient_user.email,
+                patient_name=patient.full_name,
+                doctor_name=doctor.full_name,
+                appointment_date=appointment.appointment_date.isoformat(),
+                appointment_time=str(appointment.appointment_time),
+                status=appointment.status,
+                appointment_id=appointment.id
+            )
+    except Exception as e:
+        # Log error but don't fail the status update
+        print(f"Failed to send appointment status email: {str(e)}")
     
     return appointment
 

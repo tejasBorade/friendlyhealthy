@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001", "http://localhost:5173", "http://localhost:5174"]
 
     # Redis
     REDIS_HOST: str = "localhost"
@@ -38,7 +38,15 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
 
-    # Email
+    # Email (Gmail SMTP)
+    EMAIL_HOST: str = "smtp.gmail.com"
+    EMAIL_PORT: int = 587
+    EMAIL_FROM: str = ""  # Your Gmail address
+    EMAIL_PASSWORD: str = ""  # Gmail App Password (not your regular password)
+    EMAIL_FROM_NAME: str = "Healthcare Platform"
+    EMAIL_ENABLED: bool = True
+    
+    # Legacy (kept for compatibility)
     SENDGRID_API_KEY: str = ""
     FROM_EMAIL: str = "noreply@healthcareplatform.com"
     FROM_NAME: str = "Healthcare Platform"

@@ -41,3 +41,8 @@ class Patient(Base):
     chronic_conditions = Column(Text, nullable=True)
     caregiver_name = Column(String(200), nullable=True)
     caregiver_phone = Column(String(20), nullable=True)
+    
+    @property
+    def full_name(self) -> str:
+        """Return patient's full name."""
+        return f"{self.first_name} {self.last_name}"

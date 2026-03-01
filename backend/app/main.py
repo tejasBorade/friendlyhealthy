@@ -7,7 +7,7 @@ import logging
 from app.core.config import settings
 from app.core.database import engine
 from app.api.routes import (
-    auth, doctors, appointments, prescriptions,
+    auth, doctors, appointments, prescriptions, patients,
     reports, billing, notifications, onboarding
     # Commented out - tables don't exist: templates, favorites, signatures, tests, reminders, notification_preferences
     # Commented out -  routes moved to prescriptions.py: medical_history
@@ -106,6 +106,7 @@ async def health_check():
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(onboarding.router, prefix="/api/v1")
 app.include_router(doctors.router, prefix="/api/v1")
+app.include_router(patients.router, prefix="/api/v1/patients", tags=["Patients"])
 app.include_router(appointments.router, prefix="/api/v1")
 app.include_router(prescriptions.router, prefix="/api/v1")  # includes medical-history
 # Commented out - tables don't exist:

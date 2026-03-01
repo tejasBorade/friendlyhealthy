@@ -39,10 +39,11 @@ import DoctorSidebar from '../components/DoctorSidebar';
 import PatientSidebar from '../components/PatientSidebar';
 
 const statusColors = {
-  pending: 'primary',
+  booked: 'primary',
   confirmed: 'info',
   completed: 'success',
   cancelled: 'error',
+  rejected: 'warning',
 };
 
 const Appointments = () => {
@@ -104,9 +105,8 @@ const Appointments = () => {
 
   const fetchPatients = async () => {
     try {
-      // You'll need to implement this endpoint
-      // const response = await api.get('/patients');
-      // setPatients(response.data.patients || []);
+      const response = await api.get('/patients');
+      setPatients(response.data.patients || []);
     } catch (error) {
       console.error('Error fetching patients:', error);
     }
@@ -132,10 +132,10 @@ const Appointments = () => {
       const formattedTime = appointmentTime.toTimeString().split(' ')[0].substring(0, 5);
 
       await api.post('/appointments', {
-        patientId: selectedPatient,
-        doctorId: selectedDoctor,
-        appointmentDate: formattedDate,
-        appointmentTime: formattedTime,
+        patient_id: selectedPatient,
+        doctor_id: selectedDoctor,
+        appointment_date: formattedDate,
+        appointment_time: formattedTime,
         reason,
       });
 
@@ -156,7 +156,7 @@ const Appointments = () => {
 
   const handleConfirmStatusUpdate = async () => {
     try {
-      await api.patch(`/appointments/${selectedAppointment.id}`, {
+      await api.patch(`/appointments/${selectedAppointment.id}/status`, {
         status: newStatus,
       });
 
@@ -415,13 +415,18 @@ const Appointments = () => {
             </TextField>
 
             <TextField
+              select
               fullWidth
-              label="Patient ID"
-              type="text"
+              label="Select Patient"
               value={selectedPatient}
               onChange={(e) => setSelectedPatient(e.target.value)}
-              helperText="Enter a patient ID (example: pat-001)"
-            />
+            >
+              {patients.map((patient) => (
+                <MenuItem key={patient.id} value={patient.id}>
+                  {patient.first_name} {patient.last_name} - {patient.phone}
+                </MenuItem>
+              ))}
+            </TextField>
 
             <LocalizationProvider dateAdapter={AdapterDateFns}>
               <DatePicker
@@ -470,10 +475,11 @@ const Appointments = () => {
             onChange={(e) => setNewStatus(e.target.value)}
             sx={{ mt: 2 }}
           >
-            <MenuItem value="pending">Pending</MenuItem>
+            <MenuItem value="booked">Booked</MenuItem>
             <MenuItem value="confirmed">Confirmed</MenuItem>
             <MenuItem value="completed">Completed</MenuItem>
             <MenuItem value="cancelled">Cancelled</MenuItem>
+            <MenuItem value="rejected">Rejected</MenuItem>
           </TextField>
         </DialogContent>
         <DialogActions>
