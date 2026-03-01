@@ -25,7 +25,7 @@ app.get('/', authMiddleware, async (c) => {
     let query = `
       SELECT
         p.id, p.user_id, p.first_name, p.last_name, p.date_of_birth, p.gender,
-        p.phone, p.address, p.city, p.state, p.pincode, p.blood_group,
+        p.phone, p.address, p.city, p.state, p.zip_code, p.blood_group,
         u.email
       FROM patients p
       LEFT JOIN users u ON p.user_id = u.id
@@ -55,7 +55,7 @@ app.get('/:id', authMiddleware, async (c) => {
     const patient = await c.env.DB.prepare(`
       SELECT
         p.id, p.user_id, p.first_name, p.last_name, p.date_of_birth, p.gender,
-        p.phone, p.address, p.city, p.state, p.pincode, p.blood_group,
+        p.phone, p.address, p.city, p.state, p.zip_code, p.blood_group,
         p.emergency_contact_name, p.emergency_contact_phone,
         u.email
       FROM patients p

@@ -35,17 +35,26 @@ app.get('/', authMiddleware, async (c) => {
     
     if (patientResult) {
       // Patient: get their prescriptions
-        prescriptions = await c.env.DB.prepare(`
-          SELECT 
-            p.id, p.appointment_id, p.patient_id, p.doctor_id, p.diagnosis, p.notes, p.created_at,
-            d.first_name as doctor_first_name, d.last_name as doctor_last_name, d.specialization,
-            a.appointment_date
+      let patientQuery = `
+        SELECT 
+          p.id, p.consultation_id, p.patient_id, p.doctor_id, 
+          p.notes, p.medication_name, p.dosage, 
+          p.frequency, p.duration, p.instructions, p.prescription_date,
+          p.created_at,
+          d.first_name as doctor_first_name, d.last_name as doctor_last_name,
+          d.qualification
         FROM prescriptions p
         JOIN doctors d ON p.doctor_id = d.id
-        JOIN appointments a ON p.appointment_id = a.id
         WHERE p.patient_id = ?
-        ORDER BY p.created_at DESC
-      `).bind(patientResult.id).all();
+      `;
+      
+      const params = [patientResult.id];
+      if (queryAppointmentId) {
+        patientQuery += ' AND p.consultation_id = ?';
+        params.push(queryAppointmentId);
+      }
+      patientQuery += ' ORDER BY p.prescription_date DESC, p.created_at DESC';
+      prescriptions = await c.env.DB.prepare(patientQuery).bind(...params).all();
     } else {
       // Doctor: get prescriptions they wrote
       const doctorResult = await c.env.DB.prepare(
@@ -55,12 +64,13 @@ app.get('/', authMiddleware, async (c) => {
       if (doctorResult) {
         let doctorQuery = `
           SELECT 
-            p.id, p.appointment_id, p.patient_id, p.doctor_id, p.diagnosis, p.notes, p.created_at,
-            pt.first_name as patient_first_name, pt.last_name as patient_last_name,
-            a.appointment_date
+            p.id, p.consultation_id, p.patient_id, p.doctor_id,
+            p.notes, p.medication_name, p.dosage,
+            p.frequency, p.duration, p.instructions, p.prescription_date,
+            p.created_at,
+            pt.first_name as patient_first_name, pt.last_name as patient_last_name
           FROM prescriptions p
           JOIN patients pt ON p.patient_id = pt.id
-          JOIN appointments a ON p.appointment_id = a.id
           WHERE p.doctor_id = ?
         `;
         const doctorParams = [doctorResult.id];
@@ -69,23 +79,24 @@ app.get('/', authMiddleware, async (c) => {
           doctorParams.push(queryPatientId);
         }
         if (queryAppointmentId) {
-          doctorQuery += ' AND p.appointment_id = ?';
+          doctorQuery += ' AND p.consultation_id = ?';
           doctorParams.push(queryAppointmentId);
         }
-        doctorQuery += ' ORDER BY p.created_at DESC';
+        doctorQuery += ' ORDER BY p.prescription_date DESC, p.created_at DESC';
         prescriptions = await c.env.DB.prepare(doctorQuery).bind(...doctorParams).all();
       } else {
         // Admin: get all prescriptions
         let adminQuery = `
           SELECT 
-            p.id, p.appointment_id, p.patient_id, p.doctor_id, p.diagnosis, p.notes, p.created_at,
+            p.id, p.consultation_id, p.patient_id, p.doctor_id,
+            p.notes, p.medication_name, p.dosage,
+            p.frequency, p.duration, p.instructions, p.prescription_date,
+            p.created_at,
             pt.first_name as patient_first_name, pt.last_name as patient_last_name,
-            d.first_name as doctor_first_name, d.last_name as doctor_last_name,
-            a.appointment_date
+            d.first_name as doctor_first_name, d.last_name as doctor_last_name
           FROM prescriptions p
           JOIN patients pt ON p.patient_id = pt.id
           JOIN doctors d ON p.doctor_id = d.id
-          JOIN appointments a ON p.appointment_id = a.id
           WHERE 1 = 1
         `;
         const adminParams: string[] = [];
@@ -94,15 +105,36 @@ app.get('/', authMiddleware, async (c) => {
           adminParams.push(queryPatientId);
         }
         if (queryAppointmentId) {
-          adminQuery += ' AND p.appointment_id = ?';
+          adminQuery += ' AND p.consultation_id = ?';
           adminParams.push(queryAppointmentId);
         }
-        adminQuery += ' ORDER BY p.created_at DESC';
+        adminQuery += ' ORDER BY p.prescription_date DESC, p.created_at DESC';
         prescriptions = await c.env.DB.prepare(adminQuery).bind(...adminParams).all();
       }
     }
 
-    return c.json({ prescriptions: prescriptions?.results || [] });
+    // Map to frontend expected format
+    const mappedPrescriptions = (prescriptions?.results || []).map((p: any) => ({
+      id: p.id,
+      patient_id: p.patient_id,
+      doctor_id: p.doctor_id,
+      appointment_id: p.consultation_id,
+      consultation_id: p.consultation_id,
+      medication_name: p.medication_name,
+      dosage: p.dosage,
+      frequency: p.frequency,
+      duration: p.duration,
+      instructions: p.instructions,
+      prescribed_date: p.prescription_date,
+      prescription_date: p.prescription_date,
+      created_at: p.created_at,
+      // Mapped fields for frontend compatibility
+      diagnosis: p.medication_name,
+      appointment_date: p.prescription_date,
+      notes: p.instructions
+    }));
+
+    return c.json({ prescriptions: mappedPrescriptions });
   } catch (error) {
     console.error('Error fetching prescriptions:', error);
     return c.json({ error: 'Failed to fetch prescriptions' }, 500);
@@ -117,54 +149,72 @@ app.post('/', authMiddleware, async (c) => {
 
     const patientId = body.patientId ?? body.patient_id;
     const appointmentId = body.appointmentId ?? body.appointment_id;
-    const diagnosis = body.diagnosis || 'General consultation';
-    const notes = body.notes || body.instructions || null;
+    const medicationName = body.medicationName || body.medication_name;
+    const dosage = body.dosage;
+    const frequency = body.frequency;
+    const duration = body.duration;
+    const instructions = body.instructions || body.notes || null;
 
-    if (!patientId || !appointmentId) {
-      return c.json({ error: 'patientId and appointmentId are required' }, 400);
+    if (!patientId) {
+      return c.json({ error: 'patientId is required' }, 400);
+    }
+
+    if (!medicationName) {
+      return c.json({ error: 'medicationName is required' }, 400);
     }
 
     const doctorResult = await c.env.DB.prepare(
       'SELECT id FROM doctors WHERE user_id = ?'
     ).bind(user.sub).first();
-    const doctorId = doctorResult?.id || body.doctorId || body.doctor_id;
-
-    if (!doctorId) {
-      return c.json({ error: 'Doctor profile not found' }, 400);
+    
+    if (!doctorResult) {
+      return c.json({ error: 'Doctor profile not found' }, 403);
     }
+
+    const doctorId = doctorResult.id;
+    const prescribedDate = new Date().toISOString().split('T')[0];
 
     const prescriptionId = crypto.randomUUID();
     await c.env.DB.prepare(`
-      INSERT INTO prescriptions (id, appointment_id, patient_id, doctor_id, diagnosis, notes, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO prescriptions (
+        id, appointment_id, patient_id, doctor_id, 
+        medication_name, dosage, frequency, duration, instructions,
+        prescribed_date, diagnosis, notes, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       prescriptionId,
-      String(appointmentId),
+      appointmentId ? String(appointmentId) : null,
       String(patientId),
       String(doctorId),
-      String(diagnosis),
-      notes ? String(notes) : null,
+      String(medicationName),
+      dosage ? String(dosage) : null,
+      frequency ? String(frequency) : null,
+      duration ? String(duration) : null,
+      instructions,
+      prescribedDate,
+      String(medicationName), // diagnosis maps to medication name
+      instructions,
       new Date().toISOString()
     ).run();
 
-    const medicationName = body.medicationName || body.medication_name;
-    if (medicationName) {
-      await c.env.DB.prepare(`
-        INSERT INTO prescription_medications (
-          id, prescription_id, medication_name, dosage, frequency, duration, instructions
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).bind(
-        crypto.randomUUID(),
-        prescriptionId,
-        String(medicationName),
-        String(body.dosage || ''),
-        String(body.frequency || ''),
-        String(body.duration || ''),
-        body.instructions ? String(body.instructions) : null
-      ).run();
-    }
-
-    return c.json({ id: prescriptionId, message: 'Prescription created' }, 201);
+    // Return in frontend expected format
+    return c.json({ 
+      id: prescriptionId,
+      patient_id: patientId,
+      doctor_id: doctorId,
+      appointment_id: appointmentId,
+      medication_name: medicationName,
+      dosage,
+      frequency,
+      duration,
+      instructions,
+      prescribed_date: prescribedDate,
+      created_at: new Date().toISOString(),
+      // Mapped fields
+      diagnosis: medicationName,
+      appointment_date: prescribedDate,
+      notes: instructions
+    }, 201);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('Error creating prescription:', message);
@@ -172,21 +222,21 @@ app.post('/', authMiddleware, async (c) => {
   }
 });
 
-// Get prescription with medications
+// Get prescription by ID
 app.get('/:id', authMiddleware, async (c) => {
   try {
     const id = c.req.param('id');
     
     const prescription = await c.env.DB.prepare(`
       SELECT 
-        p.id, p.appointment_id, p.diagnosis, p.notes, p.created_at,
+        p.id, p.consultation_id, p.patient_id, p.doctor_id,
+        p.medication_name, p.dosage, p.frequency, p.duration,
+        p.instructions, p.prescription_date, p.notes, p.created_at,
         pt.first_name as patient_first_name, pt.last_name as patient_last_name,
-        d.first_name as doctor_first_name, d.last_name as doctor_last_name, d.specialization,
-        a.appointment_date, a.reason
+        d.first_name as doctor_first_name, d.last_name as doctor_last_name, d.qualification
       FROM prescriptions p
       JOIN patients pt ON p.patient_id = pt.id
       JOIN doctors d ON p.doctor_id = d.id
-      JOIN appointments a ON p.appointment_id = a.id
       WHERE p.id = ?
     `).bind(id).first();
 
@@ -194,16 +244,13 @@ app.get('/:id', authMiddleware, async (c) => {
       return c.json({ error: 'Prescription not found' }, 404);
     }
 
-    const medications = await c.env.DB.prepare(`
-      SELECT id, medication_name, dosage, frequency, duration, instructions
-      FROM prescription_medications
-      WHERE prescription_id = ?
-    `).bind(id).all();
-
+    // Map to frontend expected format
     return c.json({ 
       prescription: {
         ...prescription,
-        medications: medications?.results || []
+        diagnosis: prescription.medication_name,
+        appointment_date: prescription.prescribed_date,
+        notes: prescription.instructions
       }
     });
   } catch (error) {

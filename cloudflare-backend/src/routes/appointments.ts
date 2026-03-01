@@ -1,6 +1,18 @@
 import { Hono } from 'hono';
+import { jwtVerify } from 'jose';
 
 const appointments = new Hono();
+
+// Helper: Verify JWT and get user
+async function verifyToken(token: string, secret: string) {
+  try {
+    const encoder = new TextEncoder();
+    const { payload } = await jwtVerify(token, encoder.encode(secret));
+    return payload;
+  } catch (error) {
+    return null;
+  }
+}
 
 // GET /appointments
 appointments.get('/', async (c) => {
@@ -26,7 +38,7 @@ appointments.get('/', async (c) => {
         p.last_name AS patient_last_name,
         d.first_name AS doctor_first_name,
         d.last_name AS doctor_last_name,
-        d.specialization
+        d.qualification
       FROM appointments a
       LEFT JOIN patients p ON a.patient_id = p.id
       LEFT JOIN doctors d ON a.doctor_id = d.id
@@ -50,27 +62,72 @@ appointments.get('/', async (c) => {
     return c.json({ appointments: results.results || [] });
   } catch (error) {
     console.error('Error fetching appointments:', error);
-    return c.json({ appointments: [] });
+    return c.json({ appointments: [], error: String(error) });
   }
 });
 
 // POST /appointments
 appointments.post('/', async (c) => {
   try {
+    // Get and verify token
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ error: 'Missing or invalid authorization header' }, 401);
+    }
+
+    const token = authHeader.substring(7);
+    const payload = await verifyToken(token, c.env.JWT_SECRET);
+    if (!payload || !payload.sub) {
+      return c.json({ error: 'Invalid token' }, 401);
+    }
+
+    const userId = payload.sub as string;
+
+    // Get user to check role
+    const user = await c.env.DB.prepare(
+      'SELECT id, email, role FROM users WHERE id = ?'
+    ).bind(userId).first();
+
+    if (!user) {
+      return c.json({ error: 'User not found' }, 401);
+    }
+
     const body = await c.req.json();
 
-    const patientId = body.patient_id ?? body.patientId;
+    let patientId = body.patient_id ?? body.patientId;
     const doctorId = body.doctor_id ?? body.doctorId;
     const clinicId = body.clinic_id ?? body.clinicId ?? null;
     const appointmentDate = body.appointment_date ?? body.appointmentDate;
     const appointmentTime = body.appointment_time ?? body.appointmentTime;
     const reasonForVisit = body.reason_for_visit ?? body.reasonForVisit ?? body.reason ?? null;
 
-    if (!patientId || !doctorId || !appointmentDate || !appointmentTime) {
+    // If patient is booking their own appointment, derive patient_id from user
+    if (user.role === 'patient') {
+      const patientRecord = await c.env.DB.prepare(
+        'SELECT id FROM patients WHERE user_id = ?'
+      ).bind(userId).first();
+      
+      if (!patientRecord) {
+        return c.json({ error: 'Patient profile not found' }, 404);
+      }
+      
+      patientId = patientRecord.id;
+    } else if (!patientId && (user.role === 'doctor' || user.role === 'admin')) {
+      // Doctor/Admin must provide patient_id
       return c.json(
         {
           error: 'Validation failed',
-          message: 'patientId, doctorId, appointmentDate, and appointmentTime are required',
+          message: 'patientId is required when booking for another patient',
+        },
+        400
+      );
+    }
+
+    if (!doctorId || !appointmentDate || !appointmentTime) {
+      return c.json(
+        {
+          error: 'Validation failed',
+          message: 'doctorId, appointmentDate, and appointmentTime are required',
         },
         400
       );
