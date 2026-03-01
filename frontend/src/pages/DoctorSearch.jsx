@@ -107,8 +107,8 @@ const DoctorSearch = () => {
   const fetchPatientId = async () => {
     try {
       const response = await api.get('/auth/me');
-      if (response.data.user?.patientId) {
-        setPatientId(response.data.user.patientId);
+      if (response.data.patient_id) {
+        setPatientId(response.data.patient_id);
       }
     } catch (error) {
       console.error('Error fetching patient info:', error);

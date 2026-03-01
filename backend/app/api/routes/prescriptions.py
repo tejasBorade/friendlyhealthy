@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from typing import List
-from pydantic import BaseModel
+from typing import List, Optional
+from pydantic import BaseModel, Field
+from datetime import date
 from app.core.database import get_db
 from app.models.medical import Prescription, MedicalRecord
 from app.models.user import User, UserRole
@@ -18,20 +19,50 @@ from app.services.celery_tasks import send_prescription_notification_email
 router = APIRouter(tags=["Prescriptions"])
 
 
+class PrescriptionCreateFrontend(BaseModel):
+    """Schema for creating prescription from frontend."""
+    patientId: int = Field(..., alias="patientId")
+    appointmentId: Optional[int] = Field(None, alias="appointmentId")
+    diagnosis: Optional[str] = None
+    medicationName: str = Field(..., alias="medicationName")
+    dosage: str
+    frequency: str
+    duration: str
+    instructions: Optional[str] = None
+    
+    class Config:
+        populate_by_name = True
+
+
 class PrescriptionsListResponse(BaseModel):
     prescriptions: List[PrescriptionResponse]
 
 
 @router.get("/prescriptions", response_model=PrescriptionsListResponse)
 async def get_prescriptions(
+    patient_id: Optional[int] = Query(None, alias="patientId"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Get prescriptions for current user."""
+    """Get prescriptions for a patient."""
     query = select(Prescription)
     
-    if current_user.role == UserRole.PATIENT:
-        # Get patient prescriptions
+    # If patientId is provided, filter by it
+    if patient_id:
+        # Verify authorization
+        if current_user.role == UserRole.PATIENT:
+            result = await db.execute(
+                select(Patient).where(Patient.user_id == current_user.id)
+            )
+            patient = result.scalar_one_or_none()
+            if not patient or patient.id != patient_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Not authorized to view these prescriptions"
+                )
+        query = query.where(Prescription.patient_id == patient_id)
+    elif current_user.role == UserRole.PATIENT:
+        # No patientId provided, get for current user
         result = await db.execute(
             select(Patient).where(Patient.user_id == current_user.id)
         )
@@ -58,7 +89,7 @@ async def get_prescriptions(
     
     result = await db.execute(query.order_by(Prescription.prescribed_date.desc()))
     prescriptions = result.scalars().all()
-    return {"prescriptions": prescriptions}
+    return {"prescriptions": [PrescriptionResponse.from_model(p) for p in prescriptions]}
 
 
 @router.get("/prescriptions/active", response_model=PrescriptionsListResponse)
@@ -92,7 +123,7 @@ async def get_active_prescriptions(
     
     result = await db.execute(query.order_by(Prescription.prescribed_date.desc()))
     prescriptions = result.scalars().all()
-    return {"prescriptions": prescriptions}
+    return {"prescriptions": [PrescriptionResponse.from_model(p) for p in prescriptions]}
 
 
 @router.get("/prescriptions/{prescription_id}", response_model=PrescriptionResponse)
@@ -136,17 +167,17 @@ async def get_prescription(
             )
     # Admin and staff can see any prescription
     
-    return prescription
+    return PrescriptionResponse.from_model(prescription)
 
 
 @router.post("/prescriptions", response_model=PrescriptionResponse, status_code=status.HTTP_201_CREATED)
 async def create_prescription(
-    prescription_data: PrescriptionCreate,
+    prescription_data: PrescriptionCreateFrontend,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Create a new prescription (Doctor only)."""
-    if current_user.role != UserRole.DOCTOR:
+    if current_user.role not in [UserRole.DOCTOR, UserRole.ADMIN]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only doctors can create prescriptions"
@@ -163,8 +194,17 @@ async def create_prescription(
             detail="Doctor profile not found"
         )
     
-    # Create prescription
-    prescription = Prescription(**prescription_data.model_dump())
+    # Create prescription with doctor_id derived from current user
+    prescription = Prescription(
+        patient_id=prescription_data.patientId,
+        doctor_id=doctor.id,
+        medication_name=prescription_data.medicationName,
+        dosage=prescription_data.dosage,
+        frequency=prescription_data.frequency,
+        duration=prescription_data.duration,
+        instructions=prescription_data.instructions,
+        prescribed_date=date.today()
+    )
     db.add(prescription)
     await db.commit()
     await db.refresh(prescription)
@@ -201,7 +241,7 @@ async def create_prescription(
         # Log error but don't fail the prescription creation
         print(f"Failed to send prescription notification email: {str(e)}")
     
-    return prescription
+    return PrescriptionResponse.from_model(prescription)
 
 
 @router.get("/medical-history", response_model=List[MedicalRecordResponse])

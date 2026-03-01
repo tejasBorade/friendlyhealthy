@@ -8,7 +8,7 @@ from app.core.config import settings
 from app.core.database import engine
 from app.api.routes import (
     auth, doctors, appointments, prescriptions, patients,
-    reports, billing, notifications, onboarding
+    reports, billing, notifications, onboarding, medical_records
     # Commented out - tables don't exist: templates, favorites, signatures, tests, reminders, notification_preferences
     # Commented out -  routes moved to prescriptions.py: medical_history
 )
@@ -109,6 +109,7 @@ app.include_router(doctors.router, prefix="/api/v1")
 app.include_router(patients.router, prefix="/api/v1/patients", tags=["Patients"])
 app.include_router(appointments.router, prefix="/api/v1")
 app.include_router(prescriptions.router, prefix="/api/v1")  # includes medical-history
+app.include_router(medical_records.router, prefix="/api/v1/medical-records", tags=["Medical Records"])
 # Commented out - tables don't exist:
 # app.include_router(templates.router, prefix="/api/v1")
 # app.include_router(favorites.router, prefix="/api/v1")

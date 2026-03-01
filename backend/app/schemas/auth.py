@@ -25,6 +25,8 @@ class UserResponse(UserBase):
     is_active: bool
     is_verified: bool
     created_at: datetime
+    patient_id: Optional[int] = None
+    doctor_id: Optional[int] = None
     
     class Config:
         from_attributes = True

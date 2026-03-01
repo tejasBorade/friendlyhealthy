@@ -4,7 +4,9 @@ from sqlalchemy import select
 from datetime import datetime, timedelta
 from app.core.database import get_db
 from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token, decode_token, validate_password_strength
-from app.models.user import User, RefreshToken
+from app.models.user import User, RefreshToken, UserRole
+from app.models.patient import Patient
+from app.models.doctor import Doctor
 from app.schemas.auth import (
     UserCreate, UserLogin, TokenResponse, RefreshTokenRequest, UserResponse,
     SendOTPRequest, SendOTPResponse, VerifyOTPRequest, BiometricLoginRequest
@@ -327,12 +329,35 @@ async def biometric_login(request: BiometricLoginRequest, db: AsyncSession = Dep
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Get current authenticated user information.
     
     Returns the user profile including id, email, role, etc.
+    For patients, also returns patient_id.
+    For doctors, also returns doctor_id.
     Requires a valid Bearer token in the Authorization header.
     """
-    return UserResponse.from_orm(current_user)
+    user_data = UserResponse.from_orm(current_user)
+    
+    # Fetch patient_id if user is a patient
+    if current_user.role == UserRole.PATIENT:
+        result = await db.execute(
+            select(Patient).where(Patient.user_id == current_user.id)
+        )
+        patient = result.scalar_one_or_none()
+        if patient:
+            user_data.patient_id = patient.id
+    
+    # Fetch doctor_id if user is a doctor
+    elif current_user.role == UserRole.DOCTOR:
+        result = await db.execute(
+            select(Doctor).where(Doctor.user_id == current_user.id)
+        )
+        doctor = result.scalar_one_or_none()
+        if doctor:
+            user_data.doctor_id = doctor.id
+    
+    return user_data

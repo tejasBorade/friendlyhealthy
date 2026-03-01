@@ -30,6 +30,31 @@ class PrescriptionResponse(PrescriptionBase):
     id: int
     prescribed_date: Optional[date]
     created_at: datetime
+    # Add fields the frontend expects
+    diagnosis: Optional[str] = None  # Map to medication_name
+    appointment_date: Optional[date] = None  # Map to prescribed_date  
+    notes: Optional[str] = None  # Map to instructions
+    
+    @classmethod
+    def from_model(cls, prescription):
+        """Map Prescription model to response with frontend-expected fields."""
+        return cls(
+            id=prescription.id,
+            patient_id=prescription.patient_id,
+            doctor_id=prescription.doctor_id,
+            medical_record_id=prescription.medical_record_id,
+            medication_name=prescription.medication_name,
+            dosage=prescription.dosage,
+            frequency=prescription.frequency,
+            duration=prescription.duration,
+            instructions=prescription.instructions,
+            prescribed_date=prescription.prescribed_date,
+            created_at=prescription.created_at,
+            # Map to frontend fields
+            diagnosis=prescription.medication_name,
+            appointment_date=prescription.prescribed_date,
+            notes=prescription.instructions
+        )
     
     class Config:
         from_attributes = True

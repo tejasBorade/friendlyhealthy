@@ -62,3 +62,44 @@ async def get_patients(
         patients=[PatientResponse.model_validate(p) for p in patients],
         total=len(patients)
     )
+
+
+@router.get("/{patient_id}", response_model=PatientResponse)
+async def get_patient(
+    patient_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get a single patient by ID."""
+    # Patients can only view their own profile
+    if current_user.role == UserRole.PATIENT:
+        # Get the patient record for this user
+        result = await db.execute(
+            select(Patient).where(Patient.user_id == current_user.id)
+        )
+        patient = result.scalar_one_or_none()
+        if not patient or patient.id != patient_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to view this patient"
+            )
+    # Admins and doctors can view any patient
+    elif current_user.role not in [UserRole.ADMIN, UserRole.DOCTOR]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to view patients"
+        )
+    
+    # Get the patient
+    result = await db.execute(
+        select(Patient).where(Patient.id == patient_id)
+    )
+    patient = result.scalar_one_or_none()
+    
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found"
+        )
+    
+    return PatientResponse.model_validate(patient)
