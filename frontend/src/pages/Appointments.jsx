@@ -50,6 +50,9 @@ const Appointments = () => {
   const navigate = useNavigate();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [skip, setSkip] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
   const [bookingDialog, setBookingDialog] = useState(false);
   const [doctors, setDoctors] = useState([]);
   const [patients, setPatients] = useState([]);
@@ -61,6 +64,7 @@ const Appointments = () => {
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [newStatus, setNewStatus] = useState('');
+  const observerTarget = React.useRef(null);
   
   const { user } = useSelector((state) => state.auth);
 
@@ -72,9 +76,39 @@ const Appointments = () => {
     }
   }, [user]);
 
-  const fetchAppointments = async () => {
+  // Infinite scroll observer
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+          loadMoreAppointments();
+        }
+      },
+      { threshold: 1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => {
+      if (observerTarget.current) {
+        observer.unobserve(observerTarget.current);
+      }
+    };
+  }, [hasMore, loadingMore, loading, skip]);
+
+  const fetchAppointments = async (reset = true) => {
     try {
-      const params = {};
+      if (reset) {
+        setLoading(true);
+        setSkip(0);
+      }
+      
+      const params = {
+        skip: reset ? 0 : skip,
+        limit: 20
+      };
       
       // Filter based on role
       if (user?.role === 'patient' && user?.patientId) {
@@ -85,13 +119,32 @@ const Appointments = () => {
       // Staff and admin see all appointments
 
       const response = await api.get('/appointments', { params });
-      setAppointments(response.data.appointments || []);
+      const newAppointments = response.data.appointments || [];
+      
+      if (reset) {
+        setAppointments(newAppointments);
+      } else {
+        setAppointments(prev => [...prev, ...newAppointments]);
+      }
+      
+      setHasMore(newAppointments.length === 20);
+      if (!reset) {
+        setSkip(prev => prev + 20);
+      } else {
+        setSkip(20);
+      }
     } catch (error) {
       console.error('Error fetching appointments:', error);
       toast.error('Failed to load appointments');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
+  };
+
+  const loadMoreAppointments = async () => {
+    setLoadingMore(true);
+    await fetchAppointments(false);
   };
 
   const fetchDoctors = async () => {
@@ -317,21 +370,22 @@ const Appointments = () => {
       {appointments.length === 0 ? (
         <Alert severity="info">No appointments found</Alert>
       ) : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Date</TableCell>
-                <TableCell>Time</TableCell>
-                {user?.role !== 'patient' && <TableCell>Patient</TableCell>}
-                {user?.role !== 'doctor' && <TableCell>Doctor</TableCell>}
-                <TableCell>Specialization</TableCell>
-                <TableCell>Reason</TableCell>
-                <TableCell>Status</TableCell>
-                {canModifyAppointment() && <TableCell>Actions</TableCell>}
-              </TableRow>
-            </TableHead>
-            <TableBody>
+        <>
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Date</TableCell>
+                  <TableCell>Time</TableCell>
+                  {user?.role !== 'patient' && <TableCell>Patient</TableCell>}
+                  {user?.role !== 'doctor' && <TableCell>Doctor</TableCell>}
+                  <TableCell>Specialization</TableCell>
+                  <TableCell>Reason</TableCell>
+                  <TableCell>Status</TableCell>
+                  {canModifyAppointment() && <TableCell>Actions</TableCell>}
+                </TableRow>
+              </TableHead>
+              <TableBody>
               {appointments.map((appointment) => (
                 <TableRow key={appointment.id}>
                   <TableCell>{formatDate(appointment.appointment_date)}</TableCell>
@@ -393,6 +447,27 @@ const Appointments = () => {
             </TableBody>
           </Table>
         </TableContainer>
+        
+        {/* Infinite scroll trigger */}
+        {hasMore && (
+          <Box 
+            ref={observerTarget} 
+            sx={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              p: 2 
+            }}
+          >
+            {loadingMore && <Typography color="text.secondary">Loading more appointments...</Typography>}
+          </Box>
+        )}
+        
+        {!hasMore && appointments.length > 0 && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+            <Typography color="text.secondary">No more appointments</Typography>
+          </Box>
+        )}
+        </>
       )}
 
       {/* Create Appointment Dialog (Staff/Admin) */}
