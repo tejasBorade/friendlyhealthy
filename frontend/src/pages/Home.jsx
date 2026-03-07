@@ -383,7 +383,7 @@ const Home = () => {
           </Grid>
           <Box sx={{ borderTop: '1px solid rgba(255,255,255,0.1)', mt: 4, pt: 4, textAlign: 'center' }}>
             <Typography variant="body2" sx={{ opacity: 0.6 }}>
-              © 2026 HealthCare Platform. All rights reserved. | Powered by ApiMedic, openFDA & Google Maps
+              © 2026 HealthCare Platform. All rights reserved. | Powered by ApiMedic, openFDA & OpenStreetMap
             </Typography>
           </Box>
         </Container>

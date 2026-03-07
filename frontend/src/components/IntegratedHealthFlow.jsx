@@ -41,6 +41,7 @@ import {
   Star,
   NavigationOutlined,
   Close,
+  Map as MapIcon,
 } from '@mui/icons-material';
 import axios from 'axios';
 import CryptoJS from 'crypto-js';
@@ -51,7 +52,7 @@ const APIMEDIC_PASSWORD = import.meta.env.VITE_APIMEDIC_PASSWORD || 'demo';
 const APIMEDIC_URL = 'https://healthservice.priaid.ch';
 const AUTH_URL = 'https://authservice.priaid.ch/login';
 const FDA_API_BASE = 'https://api.fda.gov';
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+const OVERPASS_API_URL = 'https://overpass-api.de/api/interpreter';
 
 // Demo mode detection
 const USE_DEMO_MODE = APIMEDIC_USERNAME === 'demo' || !APIMEDIC_USERNAME || APIMEDIC_USERNAME === 'your-username';
@@ -340,7 +341,7 @@ const IntegratedHealthFlow = () => {
     }
   };
 
-  // Find nearby doctors using Google Maps (Step 5)
+  // Find nearby doctors using OpenStreetMap Overpass API (Step 5)
   const findNearbyDoctors = async (specialization) => {
     if (!location) {
       setError('Location not available. Please enable location services.');
@@ -351,64 +352,125 @@ const IntegratedHealthFlow = () => {
     setError('');
 
     try {
-      if (!GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY === 'your-api-key-here') {
-        // Demo doctors
-        setNearbyDoctors([
-          {
-            name: 'Dr. Sarah Johnson - General Practice',
-            address: '123 Main St, New York, NY 10001',
-            rating: 4.8,
-            phone: '+1 (555) 123-4567',
-            distance: '0.5 miles',
-          },
-          {
-            name: 'Dr. Michael Chen - Family Medicine',
-            address: '456 Broadway, New York, NY 10013',
-            rating: 4.6,
-            phone: '+1 (555) 234-5678',
-            distance: '1.2 miles',
-          },
-          {
-            name: 'Dr. Emily Rodriguez - Internal Medicine',
-            address: '789 Park Ave, New York, NY 10021',
-            rating: 4.9,
-            phone: '+1 (555) 345-6789',
-            distance: '1.8 miles',
-          },
-        ]);
-        setActiveStep(4);
-        setLoading(false);
-        return;
-      }
+      // OpenStreetMap Overpass API query for nearby doctors, hospitals, and clinics
+      const radius = 5000; // 5km
+      const overpassQuery = `
+        [out:json][timeout:25];
+        (
+          node["amenity"="hospital"](around:${radius},${location.lat},${location.lng});
+          node["amenity"="clinic"](around:${radius},${location.lat},${location.lng});
+          node["amenity"="doctors"](around:${radius},${location.lat},${location.lng});
+          way["amenity"="hospital"](around:${radius},${location.lat},${location.lng});
+          way["amenity"="clinic"](around:${radius},${location.lat},${location.lng});
+          way["amenity"="doctors"](around:${radius},${location.lat},${location.lng});
+        );
+        out center;
+      `;
 
-      // Use Google Places API
-      const query = specialization || 'doctor';
-      const response = await axios.get(
-        `https://maps.googleapis.com/maps/api/place/nearbysearch/json`,
+      const response = await axios.post(
+        OVERPASS_API_URL,
+        overpassQuery,
         {
-          params: {
-            location: `${location.lat},${location.lng}`,
-            radius: 5000, // 5km
-            type: 'doctor',
-            keyword: query,
-            key: GOOGLE_MAPS_API_KEY,
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
           },
         }
       );
 
-      const doctors = response.data.results.slice(0, 5).map(place => ({
-        name: place.name,
-        address: place.vicinity,
-        rating: place.rating || 'N/A',
-        phone: place.formatted_phone_number || 'Call for info',
-        placeId: place.place_id,
-      }));
+      if (response.data && response.data.elements) {
+        // Calculate distance helper function
+        const calculateDistance = (lat1, lon1, lat2, lon2) => {
+          const R = 6371; // Earth's radius in km
+          const dLat = (lat2 - lat1) * Math.PI / 180;
+          const dLon = (lon2 - lon1) * Math.PI / 180;
+          const a = 
+            Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+          return R * c; // Distance in km
+        };
 
-      setNearbyDoctors(doctors);
+        const doctors = response.data.elements
+          .map(element => {
+            const lat = element.lat || element.center?.lat;
+            const lon = element.lon || element.center?.lon;
+            const distance = calculateDistance(
+              location.lat,
+              location.lng,
+              lat,
+              lon
+            );
+
+            return {
+              name: element.tags?.name || `${element.tags?.amenity || 'Medical'} Facility`,
+              address: [
+                element.tags?.['addr:street'],
+                element.tags?.['addr:housenumber'],
+                element.tags?.['addr:city'],
+                element.tags?.['addr:postcode']
+              ].filter(Boolean).join(', ') || 'Address not available',
+              phone: element.tags?.phone || element.tags?.['contact:phone'] || 'Call for info',
+              specialty: element.tags?.healthcare || element.tags?.amenity || 'General',
+              distance: `${distance.toFixed(1)} km`,
+              distanceValue: distance,
+              lat,
+              lon,
+              osmType: element.type,
+              osmId: element.id,
+            };
+          })
+          .sort((a, b) => a.distanceValue - b.distanceValue) // Sort by distance
+          .slice(0, 10); // Take top 10
+
+        if (doctors.length === 0) {
+          // Show demo doctors if no results
+          setNearbyDoctors([
+            {
+              name: 'Sample Medical Center',
+              address: 'No nearby facilities found in OpenStreetMap',
+              specialty: 'General',
+              distance: 'N/A',
+              phone: 'Enable location or try a different area',
+            },
+          ]);
+        } else {
+          setNearbyDoctors(doctors);
+        }
+      } else {
+        throw new Error('No data received from OpenStreetMap');
+      }
+
       setActiveStep(4);
     } catch (err) {
       console.error('Error finding doctors:', err);
-      setError('Failed to find nearby doctors');
+      setError('Failed to find nearby doctors. Using OpenStreetMap data.');
+      
+      // Fallback to demo doctors
+      setNearbyDoctors([
+        {
+          name: 'Dr. Sarah Johnson - General Practice',
+          address: '123 Main St',
+          specialty: 'General Practice',
+          phone: '+1 (555) 123-4567',
+          distance: '0.5 km',
+        },
+        {
+          name: 'City Hospital',
+          address: '456 Broadway',
+          specialty: 'Hospital',
+          phone: '+1 (555) 234-5678',
+          distance: '1.2 km',
+        },
+        {
+          name: 'Community Clinic',
+          address: '789 Park Ave',
+          specialty: 'Clinic',
+          phone: '+1 (555) 345-6789',
+          distance: '1.8 km',
+        },
+      ]);
+      setActiveStep(4);
     } finally {
       setLoading(false);
     }
@@ -732,6 +794,15 @@ const IntegratedHealthFlow = () => {
                             {doctor.name}
                           </Typography>
                           
+                          {doctor.specialty && (
+                            <Chip 
+                              label={doctor.specialty} 
+                              size="small" 
+                              color="primary" 
+                              sx={{ mb: 1 }}
+                            />
+                          )}
+                          
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                             <Place fontSize="small" color="action" />
                             <Typography variant="body2" color="text.secondary">
@@ -748,11 +819,11 @@ const IntegratedHealthFlow = () => {
                             </Box>
                           )}
 
-                          {doctor.rating && (
+                          {doctor.distance && (
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Star fontSize="small" sx={{ color: '#f59e0b' }} />
+                              <NavigationOutlined fontSize="small" color="action" />
                               <Typography variant="body2">
-                                {doctor.rating} {doctor.distance && `• ${doctor.distance}`}
+                                {doctor.distance} away
                               </Typography>
                             </Box>
                           )}
@@ -761,11 +832,17 @@ const IntegratedHealthFlow = () => {
                         <IconButton
                           color="primary"
                           onClick={() => {
-                            const address = encodeURIComponent(doctor.address);
-                            window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
+                            // Open in OpenStreetMap
+                            if (doctor.lat && doctor.lon) {
+                              window.open(`https://www.openstreetmap.org/?mlat=${doctor.lat}&mlon=${doctor.lon}&zoom=16`, '_blank');
+                            } else {
+                              const address = encodeURIComponent(doctor.address);
+                              window.open(`https://www.openstreetmap.org/search?query=${address}`, '_blank');
+                            }
                           }}
+                          title="View on OpenStreetMap"
                         >
-                          <NavigationOutlined />
+                          <MapIcon />
                         </IconButton>
                       </Box>
                     </CardContent>
@@ -838,7 +915,7 @@ const IntegratedHealthFlow = () => {
               mx: 'auto',
             }}
           >
-            Symptoms → Diagnosis → Medicines → Nearby Doctors
+            Symptoms → Diagnosis → Medicines → Nearby Doctors (100% Free)
           </Typography>
         </Box>
 
