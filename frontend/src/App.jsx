@@ -8,6 +8,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 import store from './store';
 import ProtectedRoute from './components/ProtectedRoute';
+import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import PatientDashboard from './pages/PatientDashboard';
@@ -121,6 +122,7 @@ function App() {
           }}
         >
           <Routes>
+            <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             
@@ -333,8 +335,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
-            <Route path="/" element={<Navigate to="/login" replace />} />
           </Routes>
         </BrowserRouter>
         <ToastContainer position="top-right" autoClose={3000} />
